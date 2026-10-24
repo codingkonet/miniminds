@@ -12,5 +12,6 @@ frontend:
       - data.js
       - style.css
       - supabase-config.js
+      - MiniMINDS.apk
   cache:
     paths: []

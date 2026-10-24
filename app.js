@@ -76,6 +76,7 @@ function landingView(){
   return `<header class="topbar"><a class="brand" href="#/"><span class="logo">🦉</span><span><strong>Mini<span>MINDS</span></strong><small>${t().tagline}</small></span></a>
   <div class="controls"><button class="pill" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">${fr?"Fonctionnalités":"Features"}</button><button class="pill" onclick="document.getElementById('categories').scrollIntoView({behavior:'smooth'})">${fr?"Catégories":"Categories"}</button><a class="pill" href="#/parent">${t().parents}</a>
   <button class="pill ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button><button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR</button>
+  <a class="btn teal" href="MiniMINDS.apk" download="MiniMINDS.apk">⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
   <a class="btn primary" href="#/app">${fr?"Commencer":"Start Learning"}</a></div></header>
   <main>
   <section class="landing-hero"><div class="mascot">🦉</div>
