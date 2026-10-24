@@ -1,0 +1,16 @@
+version: 1
+frontend:
+  phases:
+    build:
+      commands:
+        - echo "MiniMINDS is a static site - no build step"
+  artifacts:
+    baseDirectory: .
+    files:
+      - index.html
+      - app.js
+      - data.js
+      - style.css
+      - supabase-config.js
+  cache:
+    paths: []
