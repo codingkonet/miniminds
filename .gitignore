@@ -1,0 +1,22 @@
+# Secrets - NEVER commit
+dist-android/
+*.keystore
+*.jks
+KEYSTORE-INFO.txt
+.env
+.env.*
+
+# Android build
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
+android/app/src/main/assets/www/
+android/vendor/
+**/build/
+
+# Web / OS
+node_modules/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,61 @@
+# MiniMINDS
+
+Bilingual (French / English) learning web app for kids aged 3-8, with flashcards, audio pronunciation, matching game, quizzes, stories, songs, stars/badges, a parent dashboard, and a full Admin Panel linked to Supabase.
+
+## Run locally (Demo Mode - no setup)
+
+```powershell
+cd C:\Users\ouag\MiniMINDS
+python -m http.server 5174 --bind 127.0.0.1
+```
+
+Open http://127.0.0.1:5174
+
+- Landing page (public home with copyright footer): http://127.0.0.1:5174/
+- Kids app: http://127.0.0.1:5174/#/app (the Android app opens here directly)
+- Parent dashboard: `#/parent` - PIN `1234`
+- Admin panel (hidden - no button in the kids header, only a small "Admin" link in the homepage footer): direct link http://127.0.0.1:5174/#/admin - `admin@miniminds.school` / `demo1234` (offline Demo Mode only). Bookmark this link. For Supabase Mode, sign in with your Supabase Auth admin user (password is never stored in code) and set its `profiles.role` to `admin`.
+
+## Connect Supabase (real backend)
+
+1. Create a free project at https://supabase.com
+2. In Supabase: **SQL Editor** - paste and run `supabase/schema.sql` (creates all tables, RLS, storage buckets `images`/`audio`, and seed categories).
+3. In Supabase: **Authentication > Users > Add user** - create your admin user.
+4. Run in SQL Editor: `update public.profiles set role='admin' where email='your-email@example.com';`
+5. In Supabase: **Settings > API** - copy Project URL + anon public key into `supabase-config.js`:
+
+```js
+// Already linked (2026-10-24):
+window.MINIMINDS_SUPABASE = { url: "https://ofqgfenkuiujuhxqmpsp.supabase.co", anonKey: "eyJ... (in supabase-config.js)" };
+```
+
+Remaining one-time setup in Supabase dashboard for this project:
+1. SQL Editor (https://supabase.com/dashboard/project/ofqgfenkuiujuhxqmpsp/sql/new): paste and Run `supabase/schema.sql`.
+2. Authentication > Users > Add user: `admin@miniminds.school` / <your-password>, enable Auto Confirm User.
+3. SQL Editor: `update public.profiles set role='admin' where email='admin@miniminds.school';`
+
+6. Reload the app. The header/Admin now shows "Supabase connected". Admin CRUD, stories, songs and progress write to Supabase. If Supabase tables are empty, the app falls back to demo content and tells you to import the SQL.
+
+Tables: `profiles`, `kid_profiles`, `categories`, `vocabulary`, `quizzes`, `stories`, `songs`, `progress`, `badges`, `kid_badges`, `app_settings`.
+
+## Features
+
+- EN/FR toggle for the whole UI, flashcards show both languages with text-to-speech (`en-US` / `fr-FR`)
+- Age filter 3-5 / 6-8, 8 categories, 60+ words
+- Games: Flashcards, Quiz (stars by score), Matching game
+- Stories and songs with read-aloud, Rewards page with badges
+- Parent dashboard (PIN protected): stars, progress by category, reset
+- Admin: dashboard stats, CRUD for categories / vocabulary / stories / songs / badges, users view, settings (app name, parent PIN, maintenance), search/filter tables, delete confirmation
+
+## Deploy online (free)
+
+Static site - drag the `MiniMINDS` folder onto https://app.netlify.com/drop , or use Vercel / Cloudflare Pages / GitHub Pages. No build step.
+
+## Files
+
+- `index.html` - entry point
+- `app.js` - kids app + parent + admin logic, Supabase data layer
+- `data.js` - seed content mirroring the Supabase tables
+- `style.css` - playful kid-friendly design + admin layout
+- `supabase-config.js` - paste your Supabase URL / anon key here
+- `supabase/schema.sql` - full database setup
