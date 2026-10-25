@@ -46,6 +46,7 @@ Tables: `profiles`, `kid_profiles`, `categories`, `vocabulary`, `quizzes`, `stor
 - Stories and songs with read-aloud, Rewards page with badges
 - Parent dashboard (PIN protected): stars, progress by category, reset
 - Admin: dashboard stats, CRUD for categories / vocabulary / stories / songs / badges, users view, settings (app name, parent PIN, maintenance), search/filter tables, delete confirmation
+- Monetization (Admin > Monetization): ads on/off + placements + custom banner/code, Free/Paid plans editor (price, currency, features EN/FR), Premium-locked categories, payment methods - PayPal (email/link), Stripe Payment Link, bank transfer, custom methods. Public pages: `#/pricing`, `#/checkout/premium`. Config is saved to Supabase `app_settings` key `monetization` (run `supabase/monetization.sql` for optional plans/payment_methods/subscriptions tables used by future payment webhooks)
 
 ## Deploy online (free)
 

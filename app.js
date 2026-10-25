@@ -2,6 +2,32 @@
 const $ = s => document.querySelector(s);
 const LS = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)) };
 let sb = null, source = "demo";
+const DEFAULT_MONETIZATION = {
+  ads: { enabled:false, showOnLanding:true, showInApp:false, network:"Custom", code:"", imageUrl:"", linkUrl:"", label:"Advertisement" },
+  premiumCategories: "",
+  plans: [
+    { id:"free", name_en:"Free", name_fr:"Gratuit", price:0, currency:"USD", period:"forever", features_en:"Access to free categories\nFlashcards with audio\nQuizzes and matching games\nAds may be shown", features_fr:"Accès aux catégories gratuites\nCartes avec audio\nQuiz et jeux d'association\nPublicités possibles", is_active:true, is_popular:false },
+    { id:"premium", name_en:"Premium", name_fr:"Premium", price:4.99, currency:"USD", period:"month", features_en:"All categories unlocked\nNo ads\nAll stories and songs\nNew content every month\nParent progress dashboard", features_fr:"Toutes les catégories débloquées\nAucune publicité\nToutes les histoires et chansons\nNouveau contenu chaque mois\nTableau de bord parents", is_active:true, is_popular:true }
+  ],
+  payments: {
+    paypal: { enabled:true, email:"", link:"" },
+    stripe: { enabled:false, link:"" },
+    bank: { enabled:false, details:"" },
+    custom: []
+  }
+};
+function monetization(){ const m = (state.settings && state.settings.monetization) || {}; return { ads:{...DEFAULT_MONETIZATION.ads, ...(m.ads||{})}, premiumCategories:m.premiumCategories||"", plans:(m.plans&&m.plans.length?m.plans:DEFAULT_MONETIZATION.plans), payments:{ paypal:{...DEFAULT_MONETIZATION.payments.paypal, ...((m.payments||{}).paypal||{})}, stripe:{...DEFAULT_MONETIZATION.payments.stripe, ...((m.payments||{}).stripe||{})}, bank:{...DEFAULT_MONETIZATION.payments.bank, ...((m.payments||{}).bank||{})}, custom:((m.payments||{}).custom||[]) } }; }
+function isPremium(){ return !!LS.get("mm_premium", false); }
+function premiumCatList(){ return monetization().premiumCategories.split(",").map(s=>s.trim()).filter(Boolean); }
+function adSlot(place){
+  const ads = monetization().ads;
+  if(!ads.enabled || isPremium()) return "";
+  if(place==="landing" && !ads.showOnLanding) return "";
+  if(place==="app" && !ads.showInApp) return "";
+  if(ads.code) return `<div class="ad-slot"><small>${ads.label}</small><div>${ads.code}</div></div>`;
+  if(ads.imageUrl) return `<div class="ad-slot"><small>${ads.label}</small><a href="${ads.linkUrl||"#/pricing"}" target="_blank" rel="sponsored noopener"><img src="${ads.imageUrl}" alt="${ads.label}" style="max-width:100%;border-radius:12px"></a></div>`;
+  return `<div class="ad-slot"><small>${ads.label}</small><a href="#/pricing" style="font-size:20px;font-weight:900">⭐ MiniMINDS Premium - ${state.lang==="fr"?"Sans publicité, tout débloqué":"No ads, everything unlocked"} →</a></div>`;
+}
 let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, progress: LS.get("mm_progress",{}), settings: LS.get("mm_settings",{appName:"MiniMINDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), tab:"flash", flashIdx:0, quiz:null, match:null };
 
 function t(){ return window.MM_STR[state.lang]; }
@@ -42,6 +68,7 @@ function header(){
     <button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR Français</button>
     <a class="pill" href="#/rewards">⭐ ${totalStars()} ${s.stars}</a>
     <a class="pill" href="#/parent">👨‍👩‍👧 ${s.parents}</a>
+    <a class="pill" href="#/pricing">⭐ ${state.lang==="fr"?"Premium":"Premium"}</a>
   </div></header>`;
 }
 window.setLang = l=>{ state.lang=l; LS.set("mm_lang",l); render(); };
@@ -54,6 +81,39 @@ function copyrightFooter(){
   <small>© ${year} MiniMINDS. ${state.lang==="fr"?"Tous droits réservés.":"All rights reserved."} • ${state.lang==="fr"?"Sans publicité • Sûr pour les enfants":"No ads • Safe for kids"}<br>
   <a href="#/admin" style="font-size:12px;color:#bbb;text-decoration:none">Admin</a></small></div></footer>`;
 }
+
+function planCards(){
+  const fr = state.lang==="fr"; const plans = monetization().plans.filter(p=>p.is_active!==false);
+  return `<div class="grid">${plans.map(p=>{
+    const price = Number(p.price||0);
+    const priceTxt = price===0 ? (fr?"Gratuit":"Free") : `${price} ${p.currency||"USD"} / ${p.period||"month"}`;
+    const feats = (fr ? (p.features_fr||p.features_en||"") : (p.features_en||"")).split("\n").filter(Boolean);
+    return `<div class="card plan-card ${p.is_popular?"popular":""}">${p.is_popular?`<span class="badge-pop">⭐ ${fr?"Populaire":"Most Popular"}</span>`:""}<h3>${fr?(p.name_fr||p.name_en):p.name_en}</h3><div class="price">${priceTxt}</div><ul class="plan-feats">${feats.map(f=>`<li>✓ ${f}</li>`).join("")}</ul>
+    ${price===0?`<a class="btn teal" href="#/app">${fr?"Commencer gratuitement":"Start Free"}</a>`:(isPremium()?`<span class="badge">✓ Premium ${fr?"actif":"active"}</span>`:`<a class="btn coral" href="#/checkout/${p.id}">${fr?"Passer Premium":"Go Premium"}</a>`)}</div>`;
+  }).join("")}</div>`;
+}
+function pricingView(){
+  const fr=state.lang==="fr";
+  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1 style="text-align:center">⭐ ${fr?"Tarifs MiniMINDS":"MiniMINDS Pricing"}</h1>
+  <p style="text-align:center;font-weight:700">${fr?"Commencez gratuitement. Passez Premium pour tout débloquer, sans publicité.":"Start free. Go Premium to unlock everything, with no ads."}</p>
+  ${planCards()}<p style="text-align:center"><small>${fr?"Paiement sécurisé via les moyens activés par l'administrateur (PayPal, carte, virement...).":"Secure payment via the methods enabled by the admin (PayPal, card, bank transfer...)."}</small></p></main>`+copyrightFooter();
+}
+function checkoutView(planId){
+  const fr=state.lang==="fr"; const m=monetization(); const plan=m.plans.find(p=>String(p.id)===String(planId));
+  if(!plan) return pricingView();
+  const pay=m.payments; let methods="";
+  if(pay.paypal && pay.paypal.enabled) methods+=`<div class="story"><h3>🅿️ PayPal</h3>${pay.paypal.link?`<a class="btn primary" href="${pay.paypal.link}" target="_blank" rel="noopener">${fr?"Payer avec PayPal":"Pay with PayPal"}</a>`:pay.paypal.email?`<p>${fr?"Envoyez le paiement PayPal à":"Send the PayPal payment to"}: <b>${pay.paypal.email}</b></p>`:`<p>${fr?"Lien PayPal bientôt disponible - contactez-nous.":"PayPal link coming soon - contact us."}</p>`}</div>`;
+  if(pay.stripe && pay.stripe.enabled) methods+=`<div class="story"><h3>💳 ${fr?"Carte bancaire":"Card"} (Stripe)</h3>${pay.stripe.link?`<a class="btn primary" href="${pay.stripe.link}" target="_blank" rel="noopener">${fr?"Payer par carte":"Pay by Card"}</a>`:`<p>Stripe link coming soon.</p>`}</div>`;
+  if(pay.bank && pay.bank.enabled) methods+=`<div class="story"><h3>🏦 ${fr?"Virement bancaire":"Bank Transfer"}</h3><pre style="white-space:pre-wrap;font-family:inherit">${pay.bank.details||""}</pre></div>`;
+  (pay.custom||[]).forEach(c=>{ methods+=`<div class="story"><h3>💰 ${c.name||"Payment"}</h3>${c.instructions?`<p>${c.instructions}</p>`:""}${c.link?`<a class="btn primary" href="${c.link}" target="_blank" rel="noopener">${fr?"Payer":"Pay"}</a>`:""}</div>`; });
+  if(!methods) methods=`<div class="notice">${fr?"Aucun moyen de paiement activé pour le moment. L'administrateur peut les activer dans Admin > Monetization.":"No payment method enabled yet. The admin can enable them in Admin > Monetization."}</div>`;
+  return header()+`<main class="wrap"><a class="btn" href="#/pricing">⬅ ${t().back}</a><h1 style="text-align:center">⭐ ${fr?"Passer à":"Upgrade to"} ${fr?(plan.name_fr||plan.name_en):plan.name_en}</h1>
+  <div class="flash"><div class="price">${Number(plan.price||0)} ${plan.currency||"USD"} / ${plan.period||"month"}</div></div>
+  <h2>${fr?"Choisissez votre moyen de paiement":"Choose your payment method"}</h2>${methods}
+  <div class="story"><h3>${fr?"Après le paiement":"After payment"}</h3><p>${fr?"Cliquez ci-dessous pour activer Premium sur cet appareil. Pour un abonnement payant réel, l'administrateur vérifie le paiement (PayPal/carte) avant activation définitive.":"Click below to activate Premium on this device. For real paid subscriptions, the admin verifies the payment (PayPal/card) before final activation."}</p>
+  ${isPremium()?`<span class="badge">✓ Premium ${fr?"déjà actif":"already active"}</span>`:`<button class="btn coral" onclick="activatePremium()">${fr?"J'ai payé - Activer Premium":"I have paid - Activate Premium"}</button>`}</div></main>`+copyrightFooter();
+}
+window.activatePremium=()=>{ LS.set("mm_premium", true); toast(state.lang==="fr"?"Premium activé !":"Premium activated!"); celebrate(state.lang==="fr"?"Bienvenue Premium !":"Welcome to Premium!"); render(); };
 
 function landingView(){
   const fr = state.lang==="fr"; const d = state.data;
@@ -76,6 +136,7 @@ function landingView(){
   return `<header class="topbar"><a class="brand" href="#/"><span class="logo">🦉</span><span><strong>Mini<span>MINDS</span></strong><small>${t().tagline}</small></span></a>
   <div class="controls"><button class="pill" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">${fr?"Fonctionnalités":"Features"}</button><button class="pill" onclick="document.getElementById('categories').scrollIntoView({behavior:'smooth'})">${fr?"Catégories":"Categories"}</button><a class="pill" href="#/parent">${t().parents}</a>
   <button class="pill ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button><button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR</button>
+  <a class="pill" href="#/pricing">⭐ ${fr?"Tarifs":"Pricing"}</a>
   <a class="btn teal" href="MiniMINDS.apk" download="MiniMINDS.apk">⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
   <a class="btn primary" href="#/app">${fr?"Commencer":"Start Learning"}</a></div></header>
   <main>
@@ -89,6 +150,8 @@ function landingView(){
       <div class="stat">${fr?"Histoires":"Stories"}<b>${d.stories.length}</b></div>
       <div class="stat">${fr?"Âges":"Ages"}<b>3-8</b></div>
     </div></section>
+  <div class="wrap">${adSlot("landing")}</div>
+  <section class="wrap" id="pricing-preview"><h2 style="text-align:center">${fr?"Gratuit ou Premium ?":"Free or Premium?"}</h2>${planCards()}</section>
   <section class="wrap" id="features"><h2 style="text-align:center">${fr?"Pourquoi les familles choisissent MiniMINDS":"Why families choose MiniMINDS"}</h2>
     <div class="grid">${features.map(f=>`<div class="card"><div class="icon">${f[0]}</div><h3>${f[1]}</h3><small style="font-size:15px;color:#555">${f[2]}</small></div>`).join("")}</div></section>
   <section class="wrap" id="categories"><h2 style="text-align:center">${fr?"Que vont apprendre les enfants ?":"What will kids learn?"}</h2>
@@ -113,8 +176,9 @@ function homeView(){
   <button class="pill ${state.age==='6-8'?'active':''}" onclick="setAge('6-8')">6-8</button>
   <a class="btn sun" href="#/stories">📖 ${s.stories}</a><a class="btn teal" href="#/songs">🎵 ${s.songs}</a><a class="btn coral" href="#/rewards">🏆 ${s.rewards}</a></div></section>
   ${state.settings.maintenance?`<div class="notice">Maintenance mode is ON (set in Admin &gt; Settings).</div>`:""}
-  <h2>${s.choose}</h2><div class="grid">${cats.map(c=>{const p=state.progress[c.id]||{stars:0}; const total=state.data.vocabulary.filter(v=>v.category_id===c.id).length; const pct=total?Math.min(100,(p.stars/(total))*100):0;
-    return `<a class="card" href="#/category/${c.id}"><div class="icon">${c.icon||"📚"}</div><h3>${nameOf(c)}</h3><small>${state.lang==="fr"?c.name_en:c.name_fr} • ${total} • ⭐ ${p.stars}</small><div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div></a>`}).join("")}</div>
+  ${adSlot("app")}
+  <h2>${s.choose}</h2><div class="grid">${cats.map(c=>{const p=state.progress[c.id]||{stars:0}; const total=state.data.vocabulary.filter(v=>v.category_id===c.id).length; const pct=total?Math.min(100,(p.stars/(total))*100):0; const locked=premiumCatList().includes(String(c.id))&&!isPremium();
+    return `<a class="card" href="${locked?"#/pricing":`#/category/${c.id}`}"><div class="icon">${locked?"🔒":(c.icon||"📚")}</div><h3>${nameOf(c)}</h3><small>${state.lang==="fr"?c.name_en:c.name_fr} • ${total} • ⭐ ${p.stars}${locked?" • ⭐ Premium":""}</small><div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div></a>`}).join("")}</div>
   <h2 style="margin-top:30px">❓ ${state.lang==="fr"?"Zone Quiz":"Quiz Zone"} (10 questions)</h2>
   <div class="tabs"><a class="btn coral" href="#/quiz/mix">🌍 ${state.lang==="fr"?"Grand Quiz Mixte":"Big Mix Quiz"}</a><a class="btn primary" href="#/quiz/alphabet">🔤 ${state.lang==="fr"?"Quiz Alphabet":"Alphabet Quiz"}</a><a class="btn teal" href="#/quiz/animals">🦁 ${state.lang==="fr"?"Quiz Animaux":"Animals Quiz"}</a><a class="btn sun" href="#/quiz/numbers">🔢 ${state.lang==="fr"?"Quiz Nombres":"Numbers Quiz"}</a><a class="btn primary" href="#/quiz/colors">🎨 ${state.lang==="fr"?"Quiz Couleurs":"Colors Quiz"}</a></div>
   <p style="text-align:center;margin-top:26px"><span class="badge"><span class="icon">🦉</span><br><b>${state.lang==="fr"?"Mimi la chouette t'encourage !":"Mimi the Owl is cheering for you!"}</b></span></p></main>` + copyrightFooter();
@@ -214,7 +278,7 @@ window.doAdminLogin=async()=>{ const email=$("#aemail").value.trim(), pass=$("#a
 window.adminLogout=async()=>{ if(sb) await sb.auth.signOut(); state.admin=null; LS.set("mm_admin",null); location.hash="#/"; render(); };
 
 function adminShell(content,active){
-  const links=[["#/admin","📊 Dashboard"],["#/admin/categories","🗂️ Categories"],["#/admin/vocabulary","🃏 Vocabulary"],["#/admin/stories","📖 Stories"],["#/admin/songs","🎵 Songs"],["#/admin/users","👥 Users"],["#/admin/badges","🏆 Badges"],["#/admin/settings","⚙️ Settings"]];
+  const links=[["#/admin","📊 Dashboard"],["#/admin/categories","🗂️ Categories"],["#/admin/vocabulary","🃏 Vocabulary"],["#/admin/stories","📖 Stories"],["#/admin/songs","🎵 Songs"],["#/admin/users","👥 Users"],["#/admin/badges","🏆 Badges"],["#/admin/monetization","💰 Monetization"],["#/admin/settings","⚙️ Settings"]];
   return `<div class="admin-layout"><aside class="sidebar"><h2>🦉 MiniMINDS</h2>${links.map(l=>`<a href="${l[0]}" class="${active===l[0]?'active':''}">${l[1]}</a>`).join("")}<a href="#/app">← Kids Site</a><a href="#" onclick="adminLogout();return false">Logout (${state.admin.email})</a><p style="font-size:12px;opacity:.8;padding:8px">Backend: ${sb?"🟢 Supabase connected":"🟡 Demo Mode (localStorage)"}</p></aside><section class="admin-main">${content}</section></div>`;
 }
 function adminDashboard(){
@@ -269,9 +333,72 @@ window.saveItem=async(type,id)=>{
 
 function adminUsers(){ return adminShell(`<h1>Users</h1><div class="notice">${sb?"Live users come from Supabase tables: profiles + kid_profiles.":"Demo Mode: kid progress is stored on this device. Connect Supabase to see registered parents/kids."}</div><table><thead><tr><th>Type</th><th>Name / Email</th><th>Detail</th></tr></thead><tbody><tr><td>Admin</td><td>${state.admin.email}</td><td>Full access</td></tr><tr><td>Kid (this device)</td><td>Guest Kid</td><td>⭐ ${totalStars()} stars • ${Object.keys(state.progress).length} categories started</td></tr></tbody></table><h2>Badges</h2><p><a class="btn primary" href="#" onclick="addBadge();return false">+ Add Badge</a></p>${state.data.badges.map(b=>`<span class="badge"><span class="icon">${b.icon}</span><br><b>${b.name_en} / ${b.name_fr}</b><br><small>${b.condition||""}</small><br><a href="#" onclick="delItem('badges','${b.id}');return false">Delete</a></span>`).join("")}`,"#/admin/users"); }
 window.addBadge=async()=>{ const name=prompt("Badge name EN?"); if(!name)return; const obj={id:"badge"+Date.now(),name_en:name,name_fr:prompt("Badge name FR?",name)||name,icon:prompt("Icon emoji?","🏅")||"🏅",condition:prompt("Condition?","")||""}; try{ if(sb){delete obj.id; await dbSave("badges",obj,true);} else {state.data.badges.push(obj); persistContent();} render(); }catch(e){toast(e.message)} };
+function adminMonetization(){
+  const m = monetization(); const a=m.ads, pay=m.payments;
+  const sel=(cond)=>cond?"selected":"";
+  const planForms = m.plans.map((p,i)=>`<div class="form-card" style="margin:12px 0;max-width:760px"><h3>Plan ${i+1}: ${p.name_en||""} ${p.is_popular?"⭐":""}</h3>
+    <label>Name EN</label><input id="plan_${i}_name_en" value="${String(p.name_en||"").replace(/"/g,"&quot;")}">
+    <label>Name FR</label><input id="plan_${i}_name_fr" value="${String(p.name_fr||"").replace(/"/g,"&quot;")}">
+    <label>Price (0 = free)</label><input id="plan_${i}_price" type="number" step="0.01" value="${p.price||0}">
+    <label>Currency</label><input id="plan_${i}_currency" value="${p.currency||"USD"}">
+    <label>Period (month / year / forever)</label><input id="plan_${i}_period" value="${p.period||"month"}">
+    <label>Features EN (one per line)</label><textarea id="plan_${i}_features_en" rows="4">${p.features_en||""}</textarea>
+    <label>Features FR (one per line)</label><textarea id="plan_${i}_features_fr" rows="4">${p.features_fr||""}</textarea>
+    <label>Active</label><select id="plan_${i}_is_active"><option value="true" ${sel(p.is_active!==false)}>Yes</option><option value="false" ${sel(p.is_active===false)}>No</option></select>
+    <label>Most Popular badge</label><select id="plan_${i}_is_popular"><option value="false" ${sel(!p.is_popular)}>No</option><option value="true" ${sel(!!p.is_popular)}>Yes</option></select>
+    <button class="btn coral" onclick="deletePlan(${i});return false">Delete this plan</button></div>`).join("");
+  const customTxt = (pay.custom||[]).map(c=>[c.name||"",c.link||"",c.instructions||""].join(" | ")).join("\n");
+  return adminShell(`<h1>💰 Monetization - Ads, Plans & Payments</h1>
+  <div class="notice">Changes are saved to this browser and, when connected, to Supabase <b>app_settings</b> (key = monetization). Real payment confirmation (PayPal IPN / Stripe webhooks) needs a backend function - see supabase/monetization.sql. Current Premium on this device: <b>${isPremium()?"ACTIVE":"not active"}</b> ${isPremium()?`<button class="btn" onclick="localStorage.removeItem('mm_premium');render()">Reset Premium (test)</button>`:""}</div>
+
+  <h2>📢 Ads</h2><div class="form-card" style="max-width:760px">
+    <label>Enable ads (Premium users never see ads)</label><select id="ad_enabled"><option value="false" ${sel(!a.enabled)}>Off</option><option value="true" ${sel(a.enabled)}>On</option></select>
+    <label>Show on landing page</label><select id="ad_landing"><option value="true" ${sel(a.showOnLanding)}>Yes</option><option value="false" ${sel(!a.showOnLanding)}>No</option></select>
+    <label>Show inside kids app</label><select id="ad_app"><option value="false" ${sel(!a.showInApp)}>No</option><option value="true" ${sel(a.showInApp)}>Yes</option></select>
+    <label>Ad network (AdSense / AdMob / Custom)</label><input id="ad_network" value="${String(a.network||"").replace(/"/g,"&quot;")}">
+    <label>Ad code (paste AdSense / network HTML-JS code - admin only)</label><textarea id="ad_code" rows="4" placeholder="<script ...>">${String(a.code||"").replace(/</g,"&lt;")}</textarea>
+    <label>OR Banner image URL</label><input id="ad_image" value="${String(a.imageUrl||"").replace(/"/g,"&quot;")}">
+    <label>Banner link URL</label><input id="ad_link" value="${String(a.linkUrl||"").replace(/"/g,"&quot;")}">
+    <small>If no code/image is set, a MiniMINDS Premium house-ad is shown. Note: ads in kids apps must comply with Google Families / COPPA rules - use only family-friendly ad networks.</small>
+  </div>
+
+  <h2>⭐ Plans (Free / Paid)</h2>${planForms}<p><button class="btn teal" onclick="addPlan()">+ Add Plan</button></p>
+  <div class="form-card" style="max-width:760px"><label>Premium-locked category IDs (comma separated, e.g. body,daily,school - free users see a lock and the Pricing page)</label><input id="premium_cats" value="${m.premiumCategories||""}" placeholder="body,daily,school"></div>
+
+  <h2>💳 Payment Methods</h2><div class="form-card" style="max-width:760px">
+    <label>PayPal enabled</label><select id="pay_paypal_enabled"><option value="true" ${sel(pay.paypal.enabled)}>Yes</option><option value="false" ${sel(!pay.paypal.enabled)}>No</option></select>
+    <label>PayPal email (shown if no link)</label><input id="pay_paypal_email" value="${String(pay.paypal.email||"").replace(/"/g,"&quot;")}">
+    <label>PayPal payment link (PayPal.me or PayPal checkout link)</label><input id="pay_paypal_link" value="${String(pay.paypal.link||"").replace(/"/g,"&quot;")}" placeholder="https://www.paypal.com/paypalme/yourname/4.99">
+    <label>Card / Stripe enabled</label><select id="pay_stripe_enabled"><option value="true" ${sel(pay.stripe.enabled)}>Yes</option><option value="false" ${sel(!pay.stripe.enabled)}>No</option></select>
+    <label>Stripe Payment Link</label><input id="pay_stripe_link" value="${String(pay.stripe.link||"").replace(/"/g,"&quot;")}" placeholder="https://buy.stripe.com/...">
+    <label>Bank transfer enabled</label><select id="pay_bank_enabled"><option value="true" ${sel(pay.bank.enabled)}>Yes</option><option value="false" ${sel(!pay.bank.enabled)}>No</option></select>
+    <label>Bank details (shown to buyer)</label><textarea id="pay_bank_details" rows="3">${pay.bank.details||""}</textarea>
+    <label>Other payment methods (one per line: Name | link | instructions)</label><textarea id="pay_custom" rows="3" placeholder="Mobile Money | https://... | Send to 06...">${customTxt}</textarea>
+  </div>
+  <p style="margin-top:16px"><button class="btn primary" onclick="saveMonetization()">💾 Save Monetization</button> <a class="btn sun" href="#/pricing" target="_blank">View Pricing Page</a></p>
+  `,"#/admin/monetization");
+}
+window.addPlan=()=>{ state.settings.monetization = monetization(); state.settings.monetization.plans.push({id:"plan"+Date.now(),name_en:"New Plan",name_fr:"Nouveau plan",price:9.99,currency:"USD",period:"month",features_en:"All categories\nNo ads",features_fr:"Toutes les catégories\nAucune publicité",is_active:true,is_popular:false}); LS.set("mm_settings",state.settings); render(); };
+window.deletePlan=i=>{ if(!confirm("Delete this plan?"))return; state.settings.monetization = monetization(); state.settings.monetization.plans.splice(i,1); LS.set("mm_settings",state.settings); render(); };
+window.saveMonetization=async()=>{
+  const v=id=>{const e=document.getElementById(id); return e?e.value.trim():"";};
+  const old = monetization();
+  const plans = old.plans.map((p,i)=>({ id:p.id||("plan"+i), name_en:v(`plan_${i}_name_en`), name_fr:v(`plan_${i}_name_fr`), price:Number(v(`plan_${i}_price`)||0), currency:v(`plan_${i}_currency`)||"USD", period:v(`plan_${i}_period`)||"month", features_en:v(`plan_${i}_features_en`), features_fr:v(`plan_${i}_features_fr`), is_active:v(`plan_${i}_is_active`)==="true", is_popular:v(`plan_${i}_is_popular`)==="true" }));
+  const custom = v("pay_custom").split("\n").filter(Boolean).map(line=>{ const parts=line.split("|").map(s=>s.trim()); return {name:parts[0]||"Payment", link:parts[1]||"", instructions:parts[2]||""}; });
+  state.settings.monetization = {
+    ads:{ enabled:v("ad_enabled")==="true", showOnLanding:v("ad_landing")==="true", showInApp:v("ad_app")==="true", network:v("ad_network"), code:document.getElementById("ad_code")?document.getElementById("ad_code").value:"", imageUrl:v("ad_image"), linkUrl:v("ad_link"), label:"Advertisement" },
+    premiumCategories: v("premium_cats"),
+    plans,
+    payments:{ paypal:{enabled:v("pay_paypal_enabled")==="true", email:v("pay_paypal_email"), link:v("pay_paypal_link")}, stripe:{enabled:v("pay_stripe_enabled")==="true", link:v("pay_stripe_link")}, bank:{enabled:v("pay_bank_enabled")==="true", details:v("pay_bank_details")}, custom }
+  };
+  LS.set("mm_settings", state.settings);
+  await saveMonetizationToSupabase();
+  toast("Monetization saved"); render();
+};
+
 function adminSettings(){ return adminShell(`<h1>Settings</h1><div class="form-card"><label>App name</label><input id="s_name" value="${state.settings.appName}"><label>Parent PIN</label><input id="s_pin" value="${state.settings.parentPin}"><label>Maintenance mode</label><select id="s_maint"><option value="false" ${!state.settings.maintenance?"selected":""}>Off</option><option value="true" ${state.settings.maintenance?"selected":""}>On</option></select><button class="btn primary" onclick="saveSettings()">Save Settings</button>
   <hr><h3>Supabase</h3><p>Status: <b>${sb?"Connected":"Not connected (Demo Mode)"}</b></p><p>Edit <b>supabase-config.js</b> with your Project URL + anon key, run <b>supabase/schema.sql</b>, then reload.</p><p><button class="btn coral" onclick="if(confirm('Reset demo content to original seed?')){localStorage.removeItem('mm_content');localStorage.removeItem('mm_progress');location.reload()}">Reset Demo Data</button></p></div>`,"#/admin/settings"); }
-window.saveSettings=()=>{ state.settings={appName:$("#s_name").value,parentPin:$("#s_pin").value,maintenance:$("#s_maint").value==="true"}; LS.set("mm_settings",state.settings); toast("Settings saved"); render(); };
+window.saveSettings=()=>{ state.settings={...state.settings,appName:$("#s_name").value,parentPin:$("#s_pin").value,maintenance:$("#s_maint").value==="true"}; LS.set("mm_settings",state.settings); toast("Settings saved"); render(); };
 
 function render(){
   const hash=location.hash||"#/"; const parts=hash.replace("#/","").split("/");
@@ -282,11 +409,14 @@ function render(){
     else if(parts[1]==="edit") html=editView(parts[2],parts[3]);
     else if(parts[1]==="users") html=adminUsers();
     else if(parts[1]==="badges") html=adminUsers();
+    else if(parts[1]==="monetization") html=adminMonetization();
     else if(parts[1]==="settings") html=adminSettings();
     else html=adminDashboard();
   }
   else if(parts[0]==="category") html=categoryView(parts[1]);
   else if(parts[0]==="quiz") html=quizPage(parts[1]);
+  else if(parts[0]==="pricing") html=pricingView();
+  else if(parts[0]==="checkout") html=checkoutView(parts[1]);
   else if(parts[0]==="stories") html=storiesView();
   else if(parts[0]==="songs") html=songsView();
   else if(parts[0]==="rewards") html=rewardsView();
@@ -296,4 +426,18 @@ function render(){
   $("#app").innerHTML=html; window.scrollTo(0,0);
 }
 window.addEventListener("hashchange",render);
-(async()=>{ await initSupabase(); await loadData(); render(); })();
+async function loadRemoteSettings(){
+  if(!sb) return;
+  try{
+    const {data} = await sb.from("app_settings").select("*").eq("key","monetization").maybeSingle();
+    if(data && data.value){ const remote = typeof data.value==="string" ? JSON.parse(data.value) : data.value; state.settings = {...state.settings, monetization: remote}; LS.set("mm_settings", state.settings); }
+  }catch(e){ /* table/key not set yet - local defaults apply */ }
+}
+async function saveMonetizationToSupabase(){
+  if(!sb) return true;
+  try{
+    const {error} = await sb.from("app_settings").upsert({key:"monetization", value: JSON.stringify(monetization())}, {onConflict:"key"});
+    if(error) throw error; return true;
+  }catch(e){ toast("Saved locally. Supabase app_settings: "+e.message); return false; }
+}
+(async()=>{ await initSupabase(); await loadRemoteSettings(); await loadData(); render(); })();
