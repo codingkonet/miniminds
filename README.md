@@ -41,7 +41,7 @@ Tables: `profiles`, `kid_profiles`, `categories`, `vocabulary`, `quizzes`, `stor
 ## Features
 
 - EN/FR toggle for the whole UI, flashcards show both languages with text-to-speech (`en-US` / `fr-FR`)
-- Age filter 3-5 / 6-8, 8 categories, 60+ words
+- Age filter 3-5 / 6-8, 11 categories, 158 words (full A-Z alphabet, numbers 1-20), 10-question quizzes + Big Mix Quiz
 - Games: Flashcards, Quiz (stars by score), Matching game
 - Stories and songs with read-aloud, Rewards page with badges
 - Parent dashboard (PIN protected): stars, progress by category, reset

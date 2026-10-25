@@ -115,6 +115,8 @@ function homeView(){
   ${state.settings.maintenance?`<div class="notice">Maintenance mode is ON (set in Admin &gt; Settings).</div>`:""}
   <h2>${s.choose}</h2><div class="grid">${cats.map(c=>{const p=state.progress[c.id]||{stars:0}; const total=state.data.vocabulary.filter(v=>v.category_id===c.id).length; const pct=total?Math.min(100,(p.stars/(total))*100):0;
     return `<a class="card" href="#/category/${c.id}"><div class="icon">${c.icon||"📚"}</div><h3>${nameOf(c)}</h3><small>${state.lang==="fr"?c.name_en:c.name_fr} • ${total} • ⭐ ${p.stars}</small><div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div></a>`}).join("")}</div>
+  <h2 style="margin-top:30px">❓ ${state.lang==="fr"?"Zone Quiz":"Quiz Zone"} (10 questions)</h2>
+  <div class="tabs"><a class="btn coral" href="#/quiz/mix">🌍 ${state.lang==="fr"?"Grand Quiz Mixte":"Big Mix Quiz"}</a><a class="btn primary" href="#/quiz/alphabet">🔤 ${state.lang==="fr"?"Quiz Alphabet":"Alphabet Quiz"}</a><a class="btn teal" href="#/quiz/animals">🦁 ${state.lang==="fr"?"Quiz Animaux":"Animals Quiz"}</a><a class="btn sun" href="#/quiz/numbers">🔢 ${state.lang==="fr"?"Quiz Nombres":"Numbers Quiz"}</a><a class="btn primary" href="#/quiz/colors">🎨 ${state.lang==="fr"?"Quiz Couleurs":"Colors Quiz"}</a></div>
   <p style="text-align:center;margin-top:26px"><span class="badge"><span class="icon">🦉</span><br><b>${state.lang==="fr"?"Mimi la chouette t'encourage !":"Mimi the Owl is cheering for you!"}</b></span></p></main>` + copyrightFooter();
 }
 
@@ -149,14 +151,14 @@ function quizView(cat,words){
   return `<div style="text-align:center"><p style="font-weight:900">${t().whatIs} ${state.lang==="en"?"French":"English"}?</p><div class="flash" style="padding:18px"><div class="big" style="font-size:80px;${cur.color?`color:${cur.color}`:''}">${cur.icon||"❓"}</div><h2>${wordOf(cur)}</h2><button class="speak" onclick="speak('${wordOf(cur).replace(/'/g,"\\'")}','${state.lang}')">🔊 ${t().listen}</button></div>
   <div class="options">${q.options.map(o=>`<button class="opt" onclick="answerQuiz(this,'${o.replace(/'/g,"\\'")}')">${o}</button>`).join("")}</div><p>${q.idx+1}/${q.questions.length} • ${t().score}: ${q.score}</p></div>`;
 }
-window.startQuiz=(id,silent)=>{ const words=state.data.vocabulary.filter(v=>String(v.category_id)===String(id)); const qs=[...words].sort(()=>Math.random()-.5).slice(0,Math.min(5,words.length));
+window.startQuiz=(id,silent)=>{ const words=id==="mix"?state.data.vocabulary:state.data.vocabulary.filter(v=>String(v.category_id)===String(id)); const qs=[...words].sort(()=>Math.random()-.5).slice(0,Math.min(10,words.length));
   state.quiz={cat:id,questions:qs,idx:0,score:0,options:[],done:false,stars:0}; pickOptions(); state.tab="quiz"; if(!silent) render(); };
-function pickOptions(){ const q=state.quiz; const cur=q.questions[q.idx]; const pool=state.data.vocabulary.filter(v=>String(v.category_id)===String(q.cat)&&v.id!==cur.id).sort(()=>Math.random()-.5).slice(0,3);
+function pickOptions(){ const q=state.quiz; const cur=q.questions[q.idx]; const pool=(q.cat==="mix"?state.data.vocabulary.filter(v=>v.id!==cur.id):state.data.vocabulary.filter(v=>String(v.category_id)===String(q.cat)&&v.id!==cur.id)).sort(()=>Math.random()-.5).slice(0,3);
   q.options=[otherWord(cur),...pool.map(otherWord)].sort(()=>Math.random()-.5); q.answer=otherWord(cur); }
 window.answerQuiz=(el,val)=>{ const q=state.quiz; const fb=$("#feedback");
   if(val===q.answer){ el.classList.add("good"); q.score++; if(fb)fb.textContent=t().correct+" 🎉"; speak(t().correct,state.lang); }
   else { el.classList.add("bad"); if(fb)fb.textContent=t().tryAgain; }
-  setTimeout(()=>{ q.idx++; if(q.idx>=q.questions.length){ q.done=true; q.stars=q.score>=4?3:q.score>=2?2:q.score>=1?1:0; saveProgress(q.cat,q.stars,q.score); celebrate(t().finished+" ⭐".repeat(q.stars)); } else pickOptions(); render(); },800); };
+  setTimeout(()=>{ q.idx++; if(q.idx>=q.questions.length){ q.done=true; q.stars=q.score>=Math.ceil(q.questions.length*.8)?3:q.score>=Math.ceil(q.questions.length*.5)?2:q.score>=1?1:0; saveProgress(q.cat,q.stars,q.score); celebrate(t().finished+" ⭐".repeat(q.stars)); } else pickOptions(); render(); },800); };
 
 window.startMatch=id=>{ const words=state.data.vocabulary.filter(v=>String(v.category_id)===String(id)).slice(0,6);
   state.match={cat:id,words,imgs:[...words].sort(()=>Math.random()-.5),wordsShuffled:[...words].sort(()=>Math.random()-.5),selImg:null,selWord:null,done:[]}; state.tab="match"; render(); };
@@ -170,6 +172,14 @@ function matchView(cat,words){
 window.pickImg=id=>{state.match.selImg=id; checkMatch(); render();};
 window.pickWord=id=>{state.match.selWord=id; checkMatch(); render();};
 function checkMatch(){ const m=state.match; if(m&&m.selImg&&m.selWord){ if(m.selImg===m.selWord){ m.done.push(m.selImg); toast(t().correct); if(m.done.length===m.words.length){ saveProgress(m.cat,3,m.done.length); celebrate(t().finished); } } else toast(t().tryAgain); m.selImg=m.selWord=null; } }
+
+function quizPage(id){
+  const isMix=id==="mix";
+  const cat=isMix?{id:"mix",icon:"🌍",name_en:"Big Mix Quiz",name_fr:"Grand Quiz Mixte"}:state.data.categories.find(c=>String(c.id)===String(id));
+  if(!cat) return header()+`<main class="wrap"><p>Not found</p></main>`;
+  const words=isMix?state.data.vocabulary:state.data.vocabulary.filter(v=>String(v.category_id)===String(id));
+  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1 style="text-align:center">${cat.icon} ${nameOf(cat)} - ${t().quiz}</h1><div id="feedback" class="feedback"></div>${quizView(cat,words)}</main>`;
+}
 
 function storiesView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>📖 ${s.stories}</h1>${state.data.stories.map(st=>`<article class="story"><h2>${st.icon||"📖"} ${state.lang==="fr"?st.title_fr:st.title_en}</h2><p>${state.lang==="fr"?st.content_fr:st.content_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?st.content_en:st.content_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?st.content_fr:st.content_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.readMe}</button></article>`).join("")}</main>`; }
 function songsView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🎵 ${s.songs}</h1>${state.data.songs.map(sg=>`<article class="story"><h2>${sg.icon||"🎵"} ${state.lang==="fr"?sg.title_fr:sg.title_en}</h2><p>${state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?sg.lyrics_en:sg.lyrics_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.listen}</button></article>`).join("")}</main>`; }
@@ -276,6 +286,7 @@ function render(){
     else html=adminDashboard();
   }
   else if(parts[0]==="category") html=categoryView(parts[1]);
+  else if(parts[0]==="quiz") html=quizPage(parts[1]);
   else if(parts[0]==="stories") html=storiesView();
   else if(parts[0]==="songs") html=songsView();
   else if(parts[0]==="rewards") html=rewardsView();
