@@ -4,7 +4,7 @@ const LS = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch
 let sb = null, source = "demo";
 const DEFAULT_MONETIZATION = {
   ads: { enabled:false, showOnLanding:true, showInApp:false, network:"Custom", code:"", imageUrl:"", linkUrl:"", label:"Advertisement" },
-  premiumCategories: "",
+  premiumCategories: "school,nature,food",
   plans: [
     { id:"free", name_en:"Free", name_fr:"Gratuit", price:0, currency:"USD", period:"forever", features_en:"Access to free categories\nFlashcards with audio\nQuizzes and matching games\nAds may be shown", features_fr:"Accès aux catégories gratuites\nCartes avec audio\nQuiz et jeux d'association\nPublicités possibles", is_active:true, is_popular:false },
     { id:"premium", name_en:"Premium", name_fr:"Premium", price:4.99, currency:"USD", period:"month", features_en:"All categories unlocked\nNo ads\nAll stories and songs\nNew content every month\nParent progress dashboard", features_fr:"Toutes les catégories débloquées\nAucune publicité\nToutes les histoires et chansons\nNouveau contenu chaque mois\nTableau de bord parents", is_active:true, is_popular:true }
@@ -28,7 +28,20 @@ function adSlot(place){
   if(ads.imageUrl) return `<div class="ad-slot"><small>${ads.label}</small><a href="${ads.linkUrl||"#/pricing"}" target="_blank" rel="sponsored noopener"><img src="${ads.imageUrl}" alt="${ads.label}" style="max-width:100%;border-radius:12px"></a></div>`;
   return `<div class="ad-slot"><small>${ads.label}</small><a href="#/pricing" style="font-size:20px;font-weight:900">⭐ MiniMINDS Premium - ${state.lang==="fr"?"Sans publicité, tout débloqué":"No ads, everything unlocked"} →</a></div>`;
 }
-let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, progress: LS.get("mm_progress",{}), settings: LS.get("mm_settings",{appName:"MiniMINDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), tab:"flash", flashIdx:0, quiz:null, match:null };
+let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, progress: LS.get("mm_progress",{}), settings: LS.get("mm_settings",{appName:"MiniMINDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), user: LS.get("mm_session",null), authMsg:"", tab:"flash", flashIdx:0, quiz:null, match:null };
+function authButtons(){
+  const fr = state.lang==="fr";
+  if(state.user) return `<span class="pill" title="${state.user.email}">👤 ${String(state.user.email||"").split("@")[0]}</span><button class="pill" onclick="logoutAccount()">${fr?"Déconnexion":"Logout"}</button>`;
+  return `<a class="pill" href="#/login">${fr?"Se connecter":"Login"}</a><a class="btn primary" href="#/signup">${fr?"S'inscrire":"Sign Up"}</a>`;
+}
+window.logoutAccount = async()=>{ if(sb){ try{ await sb.auth.signOut(); }catch(e){} } state.user=null; LS.set("mm_session",null); LS.set("mm_admin",null); state.admin=null; location.hash="#/"; render(); };
+async function checkPremiumSubscription(){
+  if(!sb || !state.user) return;
+  try{
+    const {data} = await sb.from("subscriptions").select("*").eq("parent_id", state.user.id).eq("status","active").limit(1);
+    if(data && data.length) LS.set("mm_premium", true);
+  }catch(e){ /* subscriptions table optional (supabase/monetization.sql) */ }
+}
 
 function t(){ return window.MM_STR[state.lang]; }
 function nameOf(o){ return state.lang==="fr" ? o.name_fr : o.name_en; }
@@ -69,6 +82,7 @@ function header(){
     <a class="pill" href="#/rewards">⭐ ${totalStars()} ${s.stars}</a>
     <a class="pill" href="#/parent">👨‍👩‍👧 ${s.parents}</a>
     <a class="pill" href="#/pricing">⭐ ${state.lang==="fr"?"Premium":"Premium"}</a>
+    ${authButtons()}
   </div></header>`;
 }
 window.setLang = l=>{ state.lang=l; LS.set("mm_lang",l); render(); };
@@ -81,6 +95,50 @@ function copyrightFooter(){
   <small>© ${year} MiniMINDS. ${state.lang==="fr"?"Tous droits réservés.":"All rights reserved."} • ${state.lang==="fr"?"Sans publicité • Sûr pour les enfants":"No ads • Safe for kids"}<br>
   <a href="#/admin" style="font-size:12px;color:#bbb;text-decoration:none">Admin</a></small></div></footer>`;
 }
+
+function authView(isSignup, notice){
+  const fr=state.lang==="fr";
+  if(state.user) return header()+`<main class="wrap"><div class="form-card" style="margin:30px auto"><h2>👤 ${fr?"Mon compte":"My Account"}</h2><p><b>${state.user.email}</b></p><p>${isPremium()?"⭐ Premium: <b>"+(fr?"actif":"active")+"</b>":(fr?"Plan actuel: Gratuit":"Current plan: Free")}</p><p><a class="btn primary" href="#/app">${fr?"Ouvrir l'application":"Open App"}</a> ${isPremium()?"":`<a class="btn coral" href="#/pricing">⭐ ${fr?"Passer Premium":"Upgrade to Premium"}</a>`}</p><button class="btn" onclick="logoutAccount()">${fr?"Déconnexion":"Logout"}</button></div></main>`+copyrightFooter();
+  return header()+`<main class="wrap"><div class="form-card" style="margin:30px auto"><div style="font-size:48px">🦉</div><h1>${isSignup?(fr?"Créer un compte":"Create your account"):(fr?"Bon retour":"Welcome back")}</h1>
+  ${notice?`<div class="notice">${notice}</div>`:""}
+  ${state.authMsg?`<div class="notice">${state.authMsg}</div>`:""}
+  <p>${fr?"Un compte parent est obligatoire avant de passer au plan payant (Premium). Les enfants n'ont pas besoin de compte.":"A parent account is required before upgrading to a paid (Premium) plan. Kids do not need an account."}</p>
+  ${isSignup?`<label>${fr?"Nom du parent":"Parent name"}</label><input id="auth_name" autocomplete="name" placeholder="Parent">`:""}
+  <label>Email</label><input id="auth_email" type="email" autocomplete="email" placeholder="parent@example.com">
+  <label>${fr?"Mot de passe":"Password"}</label><input id="auth_pass" type="password" autocomplete="${isSignup?"new-password":"current-password"}" placeholder="••••••••">
+  <button class="btn primary" onclick="${isSignup?"doSignup()":"doLogin()"}">${isSignup?(fr?"S'inscrire":"Sign Up"):(fr?"Se connecter":"Login")}</button>
+  <p>${isSignup?`${fr?"Déjà un compte ?":"Already have an account?"} <a href="#/login"><b>${fr?"Se connecter":"Login"}</b></a>`:`${fr?"Pas encore de compte ?":"No account yet?"} <a href="#/signup"><b>${fr?"S'inscrire gratuitement":"Sign up free"}</b></a>`}</p>
+  <p><small>${sb?(fr?"Compte sécurisé via Supabase Auth.":"Secure account via Supabase Auth."):(fr?"Mode démo: compte stocké sur cet appareil.":"Demo Mode: account stored on this device.")}</small></p></div></main>`+copyrightFooter();
+}
+function afterAuthRedirect(){
+  const target = LS.get("mm_redirect", "#/app"); localStorage.removeItem("mm_redirect");
+  location.hash = target; render();
+}
+window.doSignup=async()=>{
+  const email=($("#auth_email")||{}).value?.trim()||"", password=($("#auth_pass")||{}).value||"", pname=($("#auth_name")||{}).value?.trim()||"";
+  state.authMsg="";
+  if(!email||password.length<6){ state.authMsg=state.lang==="fr"?"Email valide et mot de passe de 6 caractères minimum requis.":"Valid email and a password of at least 6 characters required."; render(); return; }
+  if(sb){
+    const {data,error}=await sb.auth.signUp({email,password,options:{data:{parent_name:pname}}});
+    if(error){ state.authMsg=error.message; render(); return; }
+    if(data.session && data.user){ state.user={id:data.user.id,email:data.user.email}; LS.set("mm_session",state.user); await checkPremiumSubscription(); afterAuthRedirect(); return; }
+    state.authMsg=state.lang==="fr"?"Compte créé ! Vérifiez votre email pour confirmer, puis connectez-vous.":"Account created! Check your email to confirm, then login."; location.hash="#/login"; render(); return;
+  }
+  const users=LS.get("mm_users",[]); if(users.some(u=>u.email===email)){ state.authMsg="Account already exists. Please login."; location.hash="#/login"; render(); return; }
+  users.push({email,password:btoa(password),name:pname}); LS.set("mm_users",users); state.user={email}; LS.set("mm_session",state.user); afterAuthRedirect();
+};
+window.doLogin=async()=>{
+  const email=($("#auth_email")||{}).value?.trim()||"", password=($("#auth_pass")||{}).value||"";
+  state.authMsg="";
+  if(sb){
+    const {data,error}=await sb.auth.signInWithPassword({email,password});
+    if(error){ state.authMsg=error.message; render(); return; }
+    state.user={id:data.user.id,email:data.user.email}; LS.set("mm_session",state.user); await checkPremiumSubscription(); afterAuthRedirect(); return;
+  }
+  const users=LS.get("mm_users",[]); const u=users.find(x=>x.email===email&&x.password===btoa(password));
+  if(!u){ state.authMsg=state.lang==="fr"?"Email ou mot de passe incorrect.":"Wrong email or password."; render(); return; }
+  state.user={email}; LS.set("mm_session",state.user); afterAuthRedirect();
+};
 
 function planCards(){
   const fr = state.lang==="fr"; const plans = monetization().plans.filter(p=>p.is_active!==false);
@@ -113,7 +171,7 @@ function checkoutView(planId){
   <div class="story"><h3>${fr?"Après le paiement":"After payment"}</h3><p>${fr?"Cliquez ci-dessous pour activer Premium sur cet appareil. Pour un abonnement payant réel, l'administrateur vérifie le paiement (PayPal/carte) avant activation définitive.":"Click below to activate Premium on this device. For real paid subscriptions, the admin verifies the payment (PayPal/card) before final activation."}</p>
   ${isPremium()?`<span class="badge">✓ Premium ${fr?"déjà actif":"already active"}</span>`:`<button class="btn coral" onclick="activatePremium()">${fr?"J'ai payé - Activer Premium":"I have paid - Activate Premium"}</button>`}</div></main>`+copyrightFooter();
 }
-window.activatePremium=()=>{ LS.set("mm_premium", true); toast(state.lang==="fr"?"Premium activé !":"Premium activated!"); celebrate(state.lang==="fr"?"Bienvenue Premium !":"Welcome to Premium!"); render(); };
+window.activatePremium=()=>{ if(!state.user){ LS.set("mm_redirect","#/checkout/premium"); location.hash="#/login"; toast(state.lang==="fr"?"Connectez-vous d'abord":"Login first"); render(); return; } LS.set("mm_premium", true); toast(state.lang==="fr"?"Premium activé !":"Premium activated!"); celebrate(state.lang==="fr"?"Bienvenue Premium !":"Welcome to Premium!"); render(); };
 
 function landingView(){
   const fr = state.lang==="fr"; const d = state.data;
@@ -138,6 +196,7 @@ function landingView(){
   <button class="pill ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button><button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR</button>
   <a class="pill" href="#/pricing">⭐ ${fr?"Tarifs":"Pricing"}</a>
   <a class="btn teal" href="MiniMINDS.apk" download="MiniMINDS.apk">⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
+  ${authButtons()}
   <a class="btn primary" href="#/app">${fr?"Commencer":"Start Learning"}</a></div></header>
   <main>
   <section class="landing-hero"><div class="mascot">🦉</div>
@@ -186,6 +245,13 @@ function homeView(){
 
 function categoryView(id){
   const s=t(); const cat=state.data.categories.find(c=>String(c.id)===String(id)); if(!cat) return header()+`<main class="wrap"><p>Not found</p></main>`;
+  if(premiumCatList().includes(String(id)) && !isPremium()){
+    const fr=state.lang==="fr";
+    return header()+`<main class="wrap"><div class="flash" style="margin-top:30px"><div class="big">🔒</div><h2>${cat.icon} ${nameOf(cat)} - Premium</h2>
+    <p>${fr?"Cette catégorie fait partie du plan payant. Passez Premium pour la débloquer.":"This category is part of the paid plan. Upgrade to Premium to unlock it."}</p>
+    <p>${state.user?`<a class="btn coral" href="#/pricing">⭐ ${fr?"Passer Premium":"Upgrade to Premium"}</a>`:`<a class="btn primary" href="#/signup">${fr?"S'inscrire puis passer Premium":"Sign Up, then Upgrade"}</a> <a class="btn" href="#/login">${fr?"Se connecter":"Login"}</a>`}</p>
+    <p><a class="btn" href="#/app">⬅ ${s.back}</a></p></div></main>`+copyrightFooter();
+  }
   const words=state.data.vocabulary.filter(v=>String(v.category_id)===String(id)&&v.is_active!==false);
   let body="";
   if(state.tab==="flash"){
@@ -416,7 +482,13 @@ function render(){
   else if(parts[0]==="category") html=categoryView(parts[1]);
   else if(parts[0]==="quiz") html=quizPage(parts[1]);
   else if(parts[0]==="pricing") html=pricingView();
-  else if(parts[0]==="checkout") html=checkoutView(parts[1]);
+  else if(parts[0]==="login") html=authView(false);
+  else if(parts[0]==="signup") html=authView(true);
+  else if(parts[0]==="checkout"){
+    const plan = monetization().plans.find(p=>String(p.id)===String(parts[1]));
+    if(plan && Number(plan.price||0)>0 && !state.user){ LS.set("mm_redirect","#/checkout/"+parts[1]); html=authView(false, state.lang==="fr"?"Connectez-vous ou créez un compte avant de passer au plan payant.":"Login or create an account before upgrading to a paid plan."); }
+    else html=checkoutView(parts[1]);
+  }
   else if(parts[0]==="stories") html=storiesView();
   else if(parts[0]==="songs") html=songsView();
   else if(parts[0]==="rewards") html=rewardsView();
@@ -440,4 +512,6 @@ async function saveMonetizationToSupabase(){
     if(error) throw error; return true;
   }catch(e){ toast("Saved locally. Supabase app_settings: "+e.message); return false; }
 }
-(async()=>{ await initSupabase(); await loadRemoteSettings(); await loadData(); render(); })();
+(async()=>{ await initSupabase();
+  if(sb){ try{ const {data}=await sb.auth.getSession(); if(data && data.session && data.session.user){ state.user={id:data.session.user.id,email:data.session.user.email}; LS.set("mm_session",state.user); await checkPremiumSubscription(); } sb.auth.onAuthStateChange((event,session)=>{ state.user=session&&session.user?{id:session.user.id,email:session.user.email}:null; LS.set("mm_session",state.user); }); }catch(e){} }
+  await loadRemoteSettings(); await loadData(); render(); })();

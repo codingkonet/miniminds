@@ -1,6 +1,6 @@
 # MiniMINDS Android
 
-Package: `com.miniminds.school` - version 1.0.3 (4), minSdk 26, targetSdk 34. Opens directly at `#/app` (the online landing page at `/` is for the web).
+Package: `com.miniminds.school` - version 1.0.4 (5), minSdk 26, targetSdk 34. Opens directly at `#/app` (the online landing page at `/` is for the web).
 Native WebView wrapper around the MiniMINDS web app (bundled in assets, works offline in Demo content, connects to Supabase when online). Pronunciation uses native Android TextToSpeech via the `AndroidTTS` bridge.
 
 ## Outputs (in ../dist-android/)
