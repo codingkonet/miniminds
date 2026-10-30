@@ -74,6 +74,13 @@ window.MM_SEED = {
       lyrics_en: "If you're happy and you know it, clap your hands! If you're happy and you know it, clap your hands!",
       lyrics_fr: "Si tu es joyeux et tu le sais, tape des mains ! Si tu es joyeux et tu le sais, tape des mains !" }
   ],
+  videos: [
+    { id: "vid1", title_en: "ABC Phonics Song", title_fr: "Chanson phonique ABC", icon: "🔤", youtube_url: "https://www.youtube.com/watch?v=tKsIi1MH4lw", age_group: "3-5", sort_order: 1, is_active: true },
+    { id: "vid2", title_en: "Alphabet Song", title_fr: "Chanson de l'alphabet", icon: "🅰️", youtube_url: "https://www.youtube.com/watch?v=36IBDpTRVNE", age_group: "3-5", sort_order: 2, is_active: true },
+    { id: "vid3", title_en: "Learn Colors with Crayons", title_fr: "Apprendre les couleurs", icon: "🎨", youtube_url: "https://www.youtube.com/watch?v=9_WBQISVHnw", age_group: "3-5", sort_order: 3, is_active: true },
+    { id: "vid4", title_en: "Animals ABC Phonics", title_fr: "ABC des animaux", icon: "🦁", youtube_url: "https://www.youtube.com/watch?v=bVeP6JISfyw", age_group: "3-8", sort_order: 4, is_active: true },
+    { id: "vid5", title_en: "Phonics Song with Ms Rachel", title_fr: "Chanson des sons avec Ms Rachel", icon: "👩‍🏫", youtube_url: "https://www.youtube.com/watch?v=oVtzNpzuvoA", age_group: "3-5", sort_order: 5, is_active: true }
+  ],
   badges: [
     { id: "badge1", name_en: "First Star", name_fr: "Première étoile", icon: "⭐", condition: "Earn 1 star" },
     { id: "badge2", name_en: "Super Learner", name_fr: "Super apprenant", icon: "🏆", condition: "Earn 10 stars" },
@@ -83,12 +90,12 @@ window.MM_SEED = {
 };
 
 window.MM_STR = {
-  en: { tagline:"Learn French & English by playing!", learn:"Learn", play:"Play", stories:"Stories", songs:"Songs", rewards:"My Rewards", parents:"Parents", admin:"Admin",
+  en: { tagline:"Learn French & English by playing!", learn:"Learn", play:"Play", stories:"Stories", songs:"Songs", videos:"Videos", rewards:"My Rewards", parents:"Parents", admin:"Admin",
     choose:"Choose a category", flashcards:"Flashcards", quiz:"Quiz", match:"Matching Game", listen:"Listen", next:"Next", back:"Back home",
     correct:"Great job!", tryAgain:"Try again!", finished:"You finished!", stars:"stars", score:"Score", playAgain:"Play again",
     whatIs:"What is this in", inFrench:"French", inEnglish:"English", tapPair:"Tap an image, then tap the matching word!",
     readMe:"Read to me", ageAll:"All ages", rewardsEmpty:"Play a game to earn your first star!" },
-  fr: { tagline:"Apprends le français et l'anglais en jouant !", learn:"Apprendre", play:"Jouer", stories:"Histoires", songs:"Chansons", rewards:"Mes récompenses", parents:"Parents", admin:"Admin",
+  fr: { tagline:"Apprends le français et l'anglais en jouant !", learn:"Apprendre", play:"Jouer", stories:"Histoires", songs:"Chansons", videos:"Vidéos", rewards:"Mes récompenses", parents:"Parents", admin:"Admin",
     choose:"Choisis une catégorie", flashcards:"Cartes", quiz:"Quiz", match:"Jeu d'association", listen:"Écouter", next:"Suivant", back:"Retour",
     correct:"Bravo !", tryAgain:"Essaie encore !", finished:"Tu as terminé !", stars:"étoiles", score:"Score", playAgain:"Rejouer",
     whatIs:"Comment dit-on ceci en", inFrench:"français", inEnglish:"anglais", tapPair:"Touche une image, puis le mot qui correspond !",

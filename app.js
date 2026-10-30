@@ -19,6 +19,20 @@ const DEFAULT_MONETIZATION = {
 function monetization(){ const m = (state.settings && state.settings.monetization) || {}; return { ads:{...DEFAULT_MONETIZATION.ads, ...(m.ads||{})}, premiumCategories:m.premiumCategories||"", plans:(m.plans&&m.plans.length?m.plans:DEFAULT_MONETIZATION.plans), payments:{ paypal:{...DEFAULT_MONETIZATION.payments.paypal, ...((m.payments||{}).paypal||{})}, stripe:{...DEFAULT_MONETIZATION.payments.stripe, ...((m.payments||{}).stripe||{})}, bank:{...DEFAULT_MONETIZATION.payments.bank, ...((m.payments||{}).bank||{})}, custom:((m.payments||{}).custom||[]) } }; }
 function isPremium(){ return !!LS.get("mm_premium", false); }
 function premiumCatList(){ return monetization().premiumCategories.split(",").map(s=>s.trim()).filter(Boolean); }
+// ---- Videos (stored as JSON in Supabase app_settings key "videos", like monetization) ----
+function videoList(){ const v=(state.settings&&state.settings.videos); return Array.isArray(v)?v:((window.MM_SEED&&window.MM_SEED.videos)||[]); }
+function ytId(url){ const s=String(url||"").trim(); if(!s) return ""; if(/^[A-Za-z0-9_-]{11}$/.test(s)) return s; const m=s.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{11})/); return m?m[1]:""; }
+async function upsertSetting(key, value){
+  // app_settings has int PK (id) with default 1 - plain upsert 409s on the PK, so: update by key, else insert with a free id
+  const {data, error} = await sb.from("app_settings").update({key, value, updated_at:new Date().toISOString()}).eq("key", key).select("key");
+  if(error) throw error;
+  if(data && data.length) return;
+  let nextId = 2;
+  try{ const {data:rows} = await sb.from("app_settings").select("id"); if(rows && rows.length) nextId = Math.max(...rows.map(r=>Number(r.id)||0)) + 1; }catch(e){}
+  const {error:e2} = await sb.from("app_settings").insert({id: nextId, key, value});
+  if(e2) throw e2;
+}
+async function persistVideos(arr){ state.settings.videos=arr; LS.set("mm_settings",state.settings); if(sb){ try{ await upsertSetting("videos", JSON.stringify(arr)); }catch(e){ toast("Saved locally. Supabase app_settings: "+e.message); } } }
 function adSlot(place){
   const ads = monetization().ads;
   if(!ads.enabled || isPremium()) return "";
@@ -91,7 +105,7 @@ window.setAge = a=>{ state.age=a; LS.set("mm_age",a); render(); };
 function copyrightFooter(){
   const year = new Date().getFullYear();
   return `<footer class="site-footer"><div class="wrap" style="padding-bottom:20px"><strong>MiniMINDS</strong> - ${t().tagline}<br>
-  <a href="#/app">${t().learn}</a> • <a href="#/stories">${t().stories}</a> • <a href="#/songs">${t().songs}</a> • <a href="#/parent">${t().parents}</a><br>
+  <a href="#/app">${t().learn}</a> • <a href="#/stories">${t().stories}</a> • <a href="#/songs">${t().songs}</a> • <a href="#/videos">${t().videos}</a> • <a href="#/parent">${t().parents}</a><br>
   <small>© ${year} MiniMINDS. ${state.lang==="fr"?"Tous droits réservés.":"All rights reserved."} • ${state.lang==="fr"?"Sans publicité • Sûr pour les enfants":"No ads • Safe for kids"}<br>
   <a href="#/admin" style="font-size:12px;color:#bbb;text-decoration:none">Admin</a></small></div></footer>`;
 }
@@ -233,7 +247,7 @@ function homeView(){
   <div class="tabs"><button class="pill ${state.age==='all'?'active':''}" onclick="setAge('all')">${s.ageAll}</button>
   <button class="pill ${state.age==='3-5'?'active':''}" onclick="setAge('3-5')">3-5</button>
   <button class="pill ${state.age==='6-8'?'active':''}" onclick="setAge('6-8')">6-8</button>
-  <a class="btn sun" href="#/stories">📖 ${s.stories}</a><a class="btn teal" href="#/songs">🎵 ${s.songs}</a><a class="btn coral" href="#/rewards">🏆 ${s.rewards}</a></div></section>
+  <a class="btn sun" href="#/stories">📖 ${s.stories}</a><a class="btn teal" href="#/songs">🎵 ${s.songs}</a><a class="btn" style="background:#FF7675;color:#fff" href="#/videos">🎬 ${s.videos}</a><a class="btn coral" href="#/rewards">🏆 ${s.rewards}</a></div></section>
   ${state.settings.maintenance?`<div class="notice">Maintenance mode is ON (set in Admin &gt; Settings).</div>`:""}
   ${adSlot("app")}
   <h2>${s.choose}</h2><div class="grid">${cats.map(c=>{const p=state.progress[c.id]||{stars:0}; const total=state.data.vocabulary.filter(v=>v.category_id===c.id).length; const pct=total?Math.min(100,(p.stars/(total))*100):0; const locked=premiumCatList().includes(String(c.id))&&!isPremium();
@@ -313,6 +327,15 @@ function quizPage(id){
 
 function storiesView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>📖 ${s.stories}</h1>${state.data.stories.map(st=>`<article class="story">${st.image_url?`<img src="${st.image_url}" alt="" class="story-img">`:""}<h2>${st.icon||"📖"} ${state.lang==="fr"?st.title_fr:st.title_en}</h2><p>${state.lang==="fr"?st.content_fr:st.content_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?st.content_en:st.content_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?st.content_fr:st.content_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.readMe}</button></article>`).join("")}</main>`; }
 function songsView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🎵 ${s.songs}</h1>${state.data.songs.map(sg=>`<article class="story">${sg.image_url?`<img src="${sg.image_url}" alt="" class="story-img">`:""}<h2>${sg.icon||"🎵"} ${state.lang==="fr"?sg.title_fr:sg.title_en}</h2><p>${state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?sg.lyrics_en:sg.lyrics_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.listen}</button></article>`).join("")}</main>`; }
+function videosView(){
+  const s=t(); const fr=state.lang==="fr";
+  const vids=videoList().filter(v=>v.is_active!==false && ytId(v.youtube_url)).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const modal=state.playingVideo && vids.find(v=>v.id===state.playingVideo) ? (()=>{ const v=vids.find(x=>x.id===state.playingVideo); return `<div class="video-modal" onclick="closeVideo()"><div class="video-inner" onclick="event.stopPropagation()"><button class="video-close" onclick="closeVideo()">✕</button><iframe src="https://www.youtube-nocookie.com/embed/${ytId(v.youtube_url)}?autoplay=1&rel=0" title="${v.title_en}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><p style="font-weight:900;text-align:center">${fr?v.title_fr:v.title_en}</p></div></div>`; })() : "";
+  const cards = vids.length ? vids.map(v=>{ const yid=ytId(v.youtube_url); return `<button class="video-card" onclick="playVideo('${v.id}')"><span class="video-thumb"><img src="https://i.ytimg.com/vi/${yid}/hqdefault.jpg" alt=""><span class="video-play">▶</span></span><h3>${v.icon||"🎬"} ${fr?v.title_fr:v.title_en}</h3><small>${fr?v.title_en:v.title_fr}</small></button>`; }).join("") : `<div class="notice">${fr?"Aucune vidéo pour l'instant. Ajoute des vidéos depuis le panneau Admin.":"No videos yet. Add videos from the Admin panel."}</div>`;
+  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🎬 ${s.videos}</h1><p style="text-align:center;font-weight:800;color:#666">${fr?"Des vidéos d'apprentissage sûres pour les enfants":"Safe learning videos for kids"}</p><div class="video-grid">${cards}</div></main>`+modal;
+}
+window.playVideo=id=>{ state.playingVideo=id; render(); };
+window.closeVideo=()=>{ state.playingVideo=null; render(); };
 function rewardsView(){ const s=t(); const stars=totalStars(); const earned=state.data.badges.filter(b=> stars>= (b.id==="badge1"?1:b.id==="badge2"?10:b.id==="badge3"?25:0) && (b.id!=="badge4"||Object.keys(state.progress).length>=5));
   return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🏆 ${s.rewards}</h1><div class="flash"><div class="big">⭐ ${stars}</div><p>${s.stars}</p></div><h2>Badges</h2>${earned.length?earned.map(b=>`<span class="badge"><span class="icon">${b.icon}</span><br><b>${state.lang==="fr"?b.name_fr:b.name_en}</b></span>`).join(""):`<div class="notice">${s.rewardsEmpty}</div>`}<h2>Progress</h2>${state.data.categories.map(c=>{const p=state.progress[c.id]||{stars:0};return `<div class="bar-row"><span>${c.icon} ${nameOf(c)}</span><div class="progress"><i style="width:${Math.min(100,p.stars*20)}%"></i></div><span>⭐${p.stars}</span></div>`}).join("")}</main>`; }
 
@@ -344,14 +367,14 @@ window.doAdminLogin=async()=>{ const email=$("#aemail").value.trim(), pass=$("#a
 window.adminLogout=async()=>{ if(sb) await sb.auth.signOut(); state.admin=null; LS.set("mm_admin",null); location.hash="#/"; render(); };
 
 function adminShell(content,active){
-  const links=[["#/admin","📊 Dashboard"],["#/admin/categories","🗂️ Categories"],["#/admin/vocabulary","🃏 Vocabulary"],["#/admin/stories","📖 Stories"],["#/admin/songs","🎵 Songs"],["#/admin/users","👥 Users"],["#/admin/badges","🏆 Badges"],["#/admin/monetization","💰 Monetization"],["#/admin/settings","⚙️ Settings"]];
+  const links=[["#/admin","📊 Dashboard"],["#/admin/categories","🗂️ Categories"],["#/admin/vocabulary","🃏 Vocabulary"],["#/admin/stories","📖 Stories"],["#/admin/songs","🎵 Songs"],["#/admin/videos","🎬 Videos"],["#/admin/users","👥 Users"],["#/admin/badges","🏆 Badges"],["#/admin/monetization","💰 Monetization"],["#/admin/settings","⚙️ Settings"]];
   return `<div class="admin-layout"><aside class="sidebar"><h2>🦉 MiniMINDS</h2>${links.map(l=>`<a href="${l[0]}" class="${active===l[0]?'active':''}">${l[1]}</a>`).join("")}<a href="#/app">← Kids Site</a><a href="#" onclick="adminLogout();return false">Logout (${state.admin.email})</a><p style="font-size:12px;opacity:.8;padding:8px">Backend: ${sb?"🟢 Supabase connected":"🟡 Demo Mode (localStorage)"}</p></aside><section class="admin-main">${content}</section></div>`;
 }
 function adminDashboard(){
   const d=state.data;
   const bars=d.categories.map(c=>{const p=state.progress[c.id]||{stars:0};return `<div class="bar-row"><span>${c.icon} ${c.name_en}</span><div class="progress"><i style="width:${Math.min(100,p.stars*20)}%"></i></div><span>⭐${p.stars}</span></div>`}).join("");
   return adminShell(`<h1>Dashboard</h1><div class="stat-grid">
-  <div class="stat">Categories<b>${d.categories.length}</b></div><div class="stat">Words<b>${d.vocabulary.length}</b></div><div class="stat">Stories<b>${d.stories.length}</b></div><div class="stat">Songs<b>${d.songs.length}</b></div>
+  <div class="stat">Categories<b>${d.categories.length}</b></div><div class="stat">Words<b>${d.vocabulary.length}</b></div><div class="stat">Stories<b>${d.stories.length}</b></div><div class="stat">Songs<b>${d.songs.length}</b></div><div class="stat">Videos<b>${videoList().length}</b></div>
   <div class="stat">Badges<b>${d.badges.length}</b></div><div class="stat">Stars Earned (this device)<b>⭐ ${totalStars()}</b></div><div class="stat">Backend<b style="font-size:18px">${sb?"Supabase":"Demo / Local"}</b></div></div>
   <h2>Progress by category</h2>${bars}<h2>Quick actions</h2><p><a class="btn primary" href="#/admin/edit/categories/new">+ Category</a> <a class="btn teal" href="#/admin/edit/vocabulary/new">+ Word</a> <a class="btn sun" href="#/admin/edit/stories/new">+ Story</a></p>
   ${sb?"":`<div class="notice"><b>Connect Supabase:</b> 1) Create project at supabase.com 2) Run <b>supabase/schema.sql</b> in SQL Editor 3) Paste URL + anon key in <b>supabase-config.js</b> 4) Reload. Full steps in README.md</div>`}`,"#/admin");
@@ -362,6 +385,7 @@ function tableView(type){
   if(type==="vocabulary"){ cols="<th>Icon</th><th>EN</th><th>FR</th><th>Category</th><th></th>"; rows=d.vocabulary.map(v=>`<tr><td>${v.image_url?`<img src="${v.image_url}" alt="" class="thumb">`:(v.icon||"")}</td><td>${v.word_en}</td><td>${v.word_fr}</td><td>${v.category_id}</td><td><a href="#/admin/edit/vocabulary/${v.id}">Edit</a> • <a href="#" onclick="delItem('vocabulary','${v.id}');return false">Delete</a></td></tr>`).join(""); }
   if(type==="stories"){ cols="<th>Title EN</th><th>Title FR</th><th>Age</th><th></th>"; rows=d.stories.map(s=>`<tr><td>${s.image_url?`<img src="${s.image_url}" alt="" class="thumb"> `:""}${s.title_en}</td><td>${s.title_fr}</td><td>${s.age_group}</td><td><a href="#/admin/edit/stories/${s.id}">Edit</a> • <a href="#" onclick="delItem('stories','${s.id}');return false">Delete</a></td></tr>`).join(""); }
   if(type==="songs"){ cols="<th>Title EN</th><th>Title FR</th><th></th>"; rows=d.songs.map(s=>`<tr><td>${s.image_url?`<img src="${s.image_url}" alt="" class="thumb"> `:""}${s.title_en}</td><td>${s.title_fr}</td><td><a href="#/admin/edit/songs/${s.id}">Edit</a> • <a href="#" onclick="delItem('songs','${s.id}');return false">Delete</a></td></tr>`).join(""); }
+  if(type==="videos"){ cols="<th>Thumb</th><th>Title EN</th><th>Title FR</th><th>YouTube</th><th></th>"; rows=videoList().map(v=>{const yid=ytId(v.youtube_url); return `<tr><td>${yid?`<img src="https://i.ytimg.com/vi/${yid}/default.jpg" alt="" class="thumb">`:"🎬"}</td><td>${v.title_en}</td><td>${v.title_fr}</td><td>${v.is_active!==false?"Yes":"No"}</td><td><a href="#/admin/edit/videos/${v.id}">Edit</a> • <a href="#" onclick="delItem('videos','${v.id}');return false">Delete</a></td></tr>`;}).join(""); }
   return adminShell(`<h1 style="text-transform:capitalize">${type}</h1><p><a class="btn primary" href="#/admin/edit/${type}/new">+ Add ${type.slice(0,-1)}</a> <input id="q" placeholder="Search..." oninput="filterTable(this.value)" style="max-width:260px;display:inline-block"></p><table id="tbl"><thead><tr>${cols}</tr></thead><tbody>${rows}</tbody></table>`,"#/admin/"+type);
 }
 window.filterTable=q=>{ document.querySelectorAll("#tbl tbody tr").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?"":"none"); };
@@ -412,25 +436,29 @@ window.uploadImage=async(inp)=>{
 };
 
 async function dbSave(table, obj, isNew){
+  if(table==="videos"){ const arr=videoList(); if(isNew) arr.push(obj); else { const i=arr.findIndex(x=>String(x.id)===String(obj.id)); if(i>-1) arr[i]=obj; else arr.push(obj); } await persistVideos(arr); return; }
   if(sb){ const {error}= isNew? await sb.from(table).insert(obj) : await sb.from(table).update(obj).eq("id",obj.id); if(error) throw error; await loadData(); }
   else { const arr=state.data[table]; if(isNew) arr.push(obj); else { const i=arr.findIndex(x=>String(x.id)===String(obj.id)); if(i>-1) arr[i]=obj; } persistContent(); }
 }
 async function dbDelete(table,id){
+  if(table==="videos"){ await persistVideos(videoList().filter(x=>String(x.id)!==String(id))); return; }
   if(sb){ const {error}=await sb.from(table).delete().eq("id",id); if(error) throw error; await loadData(); }
   else { state.data[table]=state.data[table].filter(x=>String(x.id)!==String(id)); persistContent(); }
 }
 window.delItem=async(type,id)=>{ if(!confirm("Delete this item?"))return; try{ await dbDelete(type,id); toast("Deleted"); render(); }catch(e){ toast("Error: "+e.message); } };
 
 function editView(type,id){
-  const isNew=id==="new"; const item=isNew?{}:(state.data[type].find(x=>String(x.id)===String(id))||{});
+  const isNew=id==="new"; const list=(type==="videos"?videoList():(state.data[type]||[])); const item=isNew?{}:(list.find(x=>String(x.id)===String(id))||{});
   let fields="";
   const f=(k,label,val="",ta=false)=>`<label>${label}</label>${ta?`<textarea id="f_${k}" rows="4">${val||""}</textarea>`:`<input id="f_${k}" value="${String(val??"").replace(/"/g,"&quot;")}">`}`;
   if(type==="categories") fields=f("name_en","Name EN",item.name_en)+f("name_fr","Name FR",item.name_fr)+f("icon","Icon (emoji)",item.icon)+f("color","Color",item.color||"#6C5CE7")+picField("Category picture (optional, shown on the card)",item.image_url)+`<label>Age group</label><select id="f_age_group"><option ${item.age_group==="3-5"?"selected":""}>3-5</option><option ${item.age_group==="6-8"?"selected":""}>6-8</option><option ${item.age_group==="3-8"?"selected":""}>3-8</option></select>`+f("sort_order","Sort order",item.sort_order||1)+`<label>Active</label><select id="f_is_active"><option value="true" ${item.is_active!==false?"selected":""}>Yes</option><option value="false" ${item.is_active===false?"selected":""}>No</option></select>`;
   if(type==="vocabulary") fields=`<label>Category</label><select id="f_category_id">${state.data.categories.map(c=>`<option value="${c.id}" ${item.category_id===c.id?"selected":""}>${c.name_en}</option>`).join("")}</select>`+f("word_en","Word EN",item.word_en)+f("word_fr","Word FR",item.word_fr)+f("icon","Icon (emoji)",item.icon)+picField("Picture (optional, replaces the emoji on flashcards)",item.image_url)+f("color","Color (for colors category)",item.color)+f("sort_order","Sort order",item.sort_order||1);
   if(type==="stories") fields=f("title_en","Title EN",item.title_en)+f("title_fr","Title FR",item.title_fr)+f("icon","Icon",item.icon)+picField("Picture (optional)",item.image_url)+f("age_group","Age group",item.age_group||"3-5")+f("content_en","Content EN",item.content_en,true)+f("content_fr","Content FR",item.content_fr,true)+f("audio_url","Audio URL (optional)",item.audio_url);
   if(type==="songs") fields=f("title_en","Title EN",item.title_en)+f("title_fr","Title FR",item.title_fr)+f("icon","Icon",item.icon)+picField("Picture (optional)",item.image_url)+f("lyrics_en","Lyrics EN",item.lyrics_en,true)+f("lyrics_fr","Lyrics FR",item.lyrics_fr,true)+f("audio_url","Audio URL (optional)",item.audio_url);
+  if(type==="videos") fields=f("title_en","Title EN",item.title_en)+f("title_fr","Title FR",item.title_fr)+f("icon","Icon",item.icon)+`<label>YouTube link or video ID</label><input id="f_youtube_url" value="${String(item.youtube_url||"").replace(/"/g,"&quot;")}" placeholder="https://www.youtube.com/watch?v=..." oninput="ytPreview()"><div id="yt_preview" style="margin-top:8px">${ytId(item.youtube_url)?`<img src="https://i.ytimg.com/vi/${ytId(item.youtube_url)}/hqdefault.jpg" alt="" style="max-width:260px;border-radius:12px;border:3px solid var(--ink)">`:""}</div><small style="font-weight:700;color:#888">Paste any YouTube link (watch, youtu.be, shorts) - the video plays inside the app, no YouTube site around it.</small>`+`<label>Age group</label><select id="f_age_group"><option ${item.age_group==="3-5"?"selected":""}>3-5</option><option ${item.age_group==="6-8"?"selected":""}>6-8</option><option ${item.age_group==="3-8"?"selected":""}>3-8</option></select>`+f("sort_order","Sort order",item.sort_order||1)+`<label>Active</label><select id="f_is_active"><option value="true" ${item.is_active!==false?"selected":""}>Yes</option><option value="false" ${item.is_active===false?"selected":""}>No</option></select>`;
   return adminShell(`<h1>${isNew?"Add":"Edit"} ${type.slice(0,-1)}</h1><div class="form-card">${fields}<button class="btn primary" onclick="saveItem('${type}','${id}')">Save</button> <a class="btn" href="#/admin/${type}">Cancel</a><p><small>${sb?"Saving writes to Supabase table: "+type:"Demo Mode: saving to localStorage (connect Supabase for cloud)"}</small></p></div>`,"#/admin/"+type);
 }
+window.ytPreview=()=>{ const id=ytId(($("#f_youtube_url")||{}).value); const p=$("#yt_preview"); if(p) p.innerHTML=id?`<img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" style="max-width:260px;border-radius:12px;border:3px solid var(--ink)">`:""; };
 window.saveItem=async(type,id)=>{
   const val=k=>{const e=$("#f_"+k); return e?e.value.trim():"";}; const isNew=id==="new";
   let obj={id:isNew?("id"+Date.now()):id};
@@ -438,7 +466,8 @@ window.saveItem=async(type,id)=>{
   if(type==="vocabulary") obj={...obj,category_id:val("category_id"),word_en:val("word_en"),word_fr:val("word_fr"),icon:val("icon"),image_url:val("image_url")||null,color:val("color")||null,sort_order:Number(val("sort_order")||1),is_active:true};
   if(type==="stories") obj={...obj,title_en:val("title_en"),title_fr:val("title_fr"),icon:val("icon"),image_url:val("image_url")||null,age_group:val("age_group"),content_en:val("content_en"),content_fr:val("content_fr"),audio_url:val("audio_url")||null};
   if(type==="songs") obj={...obj,title_en:val("title_en"),title_fr:val("title_fr"),icon:val("icon"),image_url:val("image_url")||null,lyrics_en:val("lyrics_en"),lyrics_fr:val("lyrics_fr"),audio_url:val("audio_url")||null};
-  if(sb && isNew) delete obj.id;
+  if(type==="videos"){ const yid=ytId(val("youtube_url")); if(!yid){ toast("Please paste a valid YouTube link"); return; } obj={...obj,title_en:val("title_en"),title_fr:val("title_fr"),icon:val("icon"),youtube_url:val("youtube_url"),age_group:val("age_group"),sort_order:Number(val("sort_order")||1),is_active:val("is_active")==="true"}; }
+  if(sb && isNew && type!=="videos") delete obj.id;
   try{ await dbSave(type,obj,isNew); toast("Saved"); location.hash="#/admin/"+type; render(); }catch(e){ toast("Error: "+e.message); }
 };
 
@@ -516,7 +545,7 @@ function render(){
   let html="";
   if(parts[0]==="admin"){
     if(!state.admin) html=adminLoginView();
-    else if(parts[1]==="categories"||parts[1]==="vocabulary"||parts[1]==="stories"||parts[1]==="songs") html=tableView(parts[1]);
+    else if(parts[1]==="categories"||parts[1]==="vocabulary"||parts[1]==="stories"||parts[1]==="songs"||parts[1]==="videos") html=tableView(parts[1]);
     else if(parts[1]==="edit") html=editView(parts[2],parts[3]);
     else if(parts[1]==="users") html=adminUsers();
     else if(parts[1]==="badges") html=adminUsers();
@@ -536,6 +565,7 @@ function render(){
   }
   else if(parts[0]==="stories") html=storiesView();
   else if(parts[0]==="songs") html=songsView();
+  else if(parts[0]==="videos") html=videosView();
   else if(parts[0]==="rewards") html=rewardsView();
   else if(parts[0]==="parent") html=parentView();
   else if(parts[0]==="app") html=homeView();
@@ -549,6 +579,10 @@ async function loadRemoteSettings(){
     const {data} = await sb.from("app_settings").select("*").eq("key","monetization").maybeSingle();
     if(data && data.value){ const remote = typeof data.value==="string" ? JSON.parse(data.value) : data.value; state.settings = {...state.settings, monetization: remote}; LS.set("mm_settings", state.settings); }
   }catch(e){ /* table/key not set yet - local defaults apply */ }
+  try{
+    const {data} = await sb.from("app_settings").select("*").eq("key","videos").maybeSingle();
+    if(data && data.value){ const remote = typeof data.value==="string" ? JSON.parse(data.value) : data.value; if(Array.isArray(remote) && remote.length){ state.settings = {...state.settings, videos: remote}; LS.set("mm_settings", state.settings); } }
+  }catch(e){ /* key not set yet - seed videos apply */ }
 }
 async function saveMonetizationToSupabase(){
   if(!sb) return true;
