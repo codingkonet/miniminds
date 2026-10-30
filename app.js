@@ -4,10 +4,9 @@ const LS = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch
 let sb = null, source = "demo";
 const DEFAULT_MONETIZATION = {
   ads: { enabled:false, showOnLanding:true, showInApp:false, network:"Custom", code:"", imageUrl:"", linkUrl:"", label:"Advertisement" },
-  premiumCategories: "school,nature,food",
+  premiumCategories: "",
   plans: [
-    { id:"free", name_en:"Free", name_fr:"Gratuit", price:0, currency:"USD", period:"forever", features_en:"Access to free categories\nFlashcards with audio\nQuizzes and matching games\nAds may be shown", features_fr:"Accès aux catégories gratuites\nCartes avec audio\nQuiz et jeux d'association\nPublicités possibles", is_active:true, is_popular:false },
-    { id:"premium", name_en:"Premium", name_fr:"Premium", price:4.99, currency:"USD", period:"month", features_en:"All categories unlocked\nNo ads\nAll stories and songs\nNew content every month\nParent progress dashboard", features_fr:"Toutes les catégories débloquées\nAucune publicité\nToutes les histoires et chansons\nNouveau contenu chaque mois\nTableau de bord parents", is_active:true, is_popular:true }
+    { id:"free", name_en:"Free", name_fr:"Gratuit", price:0, currency:"USD", period:"forever", features_en:"All categories unlocked\nFlashcards with audio\nQuizzes and matching games\nStories, songs and videos", features_fr:"Toutes les catégories débloquées\nCartes avec audio\nQuiz et jeux d'association\nHistoires, chansons et vidéos", is_active:true, is_popular:false }
   ],
   payments: {
     paypal: { enabled:true, email:"", link:"" },
@@ -18,7 +17,8 @@ const DEFAULT_MONETIZATION = {
 };
 function monetization(){ const m = (state.settings && state.settings.monetization) || {}; return { ads:{...DEFAULT_MONETIZATION.ads, ...(m.ads||{})}, premiumCategories:m.premiumCategories||"", plans:(m.plans&&m.plans.length?m.plans:DEFAULT_MONETIZATION.plans), payments:{ paypal:{...DEFAULT_MONETIZATION.payments.paypal, ...((m.payments||{}).paypal||{})}, stripe:{...DEFAULT_MONETIZATION.payments.stripe, ...((m.payments||{}).stripe||{})}, bank:{...DEFAULT_MONETIZATION.payments.bank, ...((m.payments||{}).bank||{})}, custom:((m.payments||{}).custom||[]) } }; }
 function isPremium(){ return !!LS.get("mm_premium", false); }
-function premiumCatList(){ return monetization().premiumCategories.split(",").map(s=>s.trim()).filter(Boolean); }
+function hasPaidPlan(){ return monetization().plans.some(p=>p.is_active!==false && Number(p.price||0)>0); }
+function premiumCatList(){ return hasPaidPlan() ? monetization().premiumCategories.split(",").map(s=>s.trim()).filter(Boolean) : []; }
 // ---- Videos (stored as JSON in Supabase app_settings key "videos", like monetization) ----
 function videoList(){ const v=(state.settings&&state.settings.videos); return Array.isArray(v)?v:((window.MM_SEED&&window.MM_SEED.videos)||[]); }
 function ytId(url){ const s=String(url||"").trim(); if(!s) return ""; if(/^[A-Za-z0-9_-]{11}$/.test(s)) return s; const m=s.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{11})/); return m?m[1]:""; }
@@ -39,8 +39,9 @@ function adSlot(place){
   if(place==="landing" && !ads.showOnLanding) return "";
   if(place==="app" && !ads.showInApp) return "";
   if(ads.code) return `<div class="ad-slot"><small>${ads.label}</small><div>${ads.code}</div></div>`;
-  if(ads.imageUrl) return `<div class="ad-slot"><small>${ads.label}</small><a href="${ads.linkUrl||"#/pricing"}" target="_blank" rel="sponsored noopener"><img src="${ads.imageUrl}" alt="${ads.label}" style="max-width:100%;border-radius:12px"></a></div>`;
-  return `<div class="ad-slot"><small>${ads.label}</small><a href="#/pricing" style="font-size:20px;font-weight:900">⭐ MiniMINDS Premium - ${state.lang==="fr"?"Sans publicité, tout débloqué":"No ads, everything unlocked"} →</a></div>`;
+  if(ads.imageUrl) return `<div class="ad-slot"><small>${ads.label}</small><a href="${ads.linkUrl||"#/app"}" target="_blank" rel="sponsored noopener"><img src="${ads.imageUrl}" alt="${ads.label}" style="max-width:100%;border-radius:12px"></a></div>`;
+  if(hasPaidPlan()) return `<div class="ad-slot"><small>${ads.label}</small><a href="#/pricing" style="font-size:20px;font-weight:900">⭐ MiniMINDS Premium - ${state.lang==="fr"?"Sans publicité, tout débloqué":"No ads, everything unlocked"} →</a></div>`;
+  return `<div class="ad-slot"><small>${ads.label}</small></div>`;
 }
 let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, progress: LS.get("mm_progress",{}), settings: LS.get("mm_settings",{appName:"MiniMINDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), user: LS.get("mm_session",null), authMsg:"", tab:"flash", flashIdx:0, quiz:null, match:null };
 function authButtons(){
@@ -95,7 +96,7 @@ function header(){
     <button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR Français</button>
     <a class="pill" href="#/rewards">⭐ ${totalStars()} ${s.stars}</a>
     <a class="pill" href="#/parent">👨‍👩‍👧 ${s.parents}</a>
-    <a class="pill" href="#/pricing">⭐ ${state.lang==="fr"?"Premium":"Premium"}</a>
+    ${hasPaidPlan()?`<a class="pill" href="#/pricing">⭐ Premium</a>`:""}
     ${authButtons()}
   </div></header>`;
 }
@@ -112,7 +113,7 @@ function copyrightFooter(){
 
 function authView(isSignup, notice){
   const fr=state.lang==="fr";
-  if(state.user) return header()+`<main class="wrap"><div class="form-card" style="margin:30px auto"><h2>👤 ${fr?"Mon compte":"My Account"}</h2><p><b>${state.user.email}</b></p><p>${isPremium()?"⭐ Premium: <b>"+(fr?"actif":"active")+"</b>":(fr?"Plan actuel: Gratuit":"Current plan: Free")}</p><p><a class="btn primary" href="#/app">${fr?"Ouvrir l'application":"Open App"}</a> ${isPremium()?"":`<a class="btn coral" href="#/pricing">⭐ ${fr?"Passer Premium":"Upgrade to Premium"}</a>`}</p><button class="btn" onclick="logoutAccount()">${fr?"Déconnexion":"Logout"}</button></div></main>`+copyrightFooter();
+  if(state.user) return header()+`<main class="wrap"><div class="form-card" style="margin:30px auto"><h2>👤 ${fr?"Mon compte":"My Account"}</h2><p><b>${state.user.email}</b></p><p>${hasPaidPlan()?(isPremium()?"⭐ Premium: <b>"+(fr?"actif":"active")+"</b>":(fr?"Plan actuel: Gratuit":"Current plan: Free")):(fr?"Tout est gratuit 🎉":"Everything is free 🎉")}</p><p><a class="btn primary" href="#/app">${fr?"Ouvrir l'application":"Open App"}</a> ${(hasPaidPlan()&&!isPremium())?`<a class="btn coral" href="#/pricing">⭐ ${fr?"Passer Premium":"Upgrade to Premium"}</a>`:""}</p><button class="btn" onclick="logoutAccount()">${fr?"Déconnexion":"Logout"}</button></div></main>`+copyrightFooter();
   return header()+`<main class="wrap"><div class="form-card" style="margin:30px auto"><div style="font-size:48px">🦉</div><h1>${isSignup?(fr?"Créer un compte":"Create your account"):(fr?"Bon retour":"Welcome back")}</h1>
   ${notice?`<div class="notice">${notice}</div>`:""}
   ${state.authMsg?`<div class="notice">${state.authMsg}</div>`:""}
@@ -165,10 +166,10 @@ function planCards(){
   }).join("")}</div>`;
 }
 function pricingView(){
-  const fr=state.lang==="fr";
+  const fr=state.lang==="fr"; const paid=hasPaidPlan();
   return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1 style="text-align:center">⭐ ${fr?"Tarifs MiniMINDS":"MiniMINDS Pricing"}</h1>
-  <p style="text-align:center;font-weight:700">${fr?"Commencez gratuitement. Passez Premium pour tout débloquer, sans publicité.":"Start free. Go Premium to unlock everything, with no ads."}</p>
-  ${planCards()}<p style="text-align:center"><small>${fr?"Paiement sécurisé via les moyens activés par l'administrateur (PayPal, carte, virement...).":"Secure payment via the methods enabled by the admin (PayPal, card, bank transfer...)."}</small></p></main>`+copyrightFooter();
+  ${paid?`<p style="text-align:center;font-weight:700">${fr?"Commencez gratuitement. Passez Premium pour tout débloquer, sans publicité.":"Start free. Go Premium to unlock everything, with no ads."}</p>`:`<div class="notice" style="text-align:center;font-size:18px">🎉 ${fr?"Tout est entièrement gratuit ! Bonne découverte.":"Everything is completely free! Enjoy."}</div>`}
+  ${planCards()}${paid?`<p style="text-align:center"><small>${fr?"Paiement sécurisé via les moyens activés par l'administrateur (PayPal, carte, virement...).":"Secure payment via the methods enabled by the admin (PayPal, card, bank transfer...)."}</small></p>`:""}</main>`+copyrightFooter();
 }
 function checkoutView(planId){
   const fr=state.lang==="fr"; const m=monetization(); const plan=m.plans.find(p=>String(p.id)===String(planId));
@@ -208,7 +209,7 @@ function landingView(){
   return `<header class="topbar"><a class="brand" href="#/"><span class="logo">🦉</span><span><strong>Mini<span>MINDS</span></strong><small>${t().tagline}</small></span></a>
   <div class="controls"><button class="pill" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">${fr?"Fonctionnalités":"Features"}</button><button class="pill" onclick="document.getElementById('categories').scrollIntoView({behavior:'smooth'})">${fr?"Catégories":"Categories"}</button><a class="pill" href="#/parent">${t().parents}</a>
   <button class="pill ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button><button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR</button>
-  <a class="pill" href="#/pricing">⭐ ${fr?"Tarifs":"Pricing"}</a>
+  ${hasPaidPlan()?`<a class="pill" href="#/pricing">⭐ ${fr?"Tarifs":"Pricing"}</a>`:""}
   <a class="btn teal" href="MiniMINDS.apk" download="MiniMINDS.apk">⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
   ${authButtons()}
   <a class="btn primary" href="#/app">${fr?"Commencer":"Start Learning"}</a></div></header>
@@ -587,8 +588,7 @@ async function loadRemoteSettings(){
 async function saveMonetizationToSupabase(){
   if(!sb) return true;
   try{
-    const {error} = await sb.from("app_settings").upsert({key:"monetization", value: JSON.stringify(monetization())}, {onConflict:"key"});
-    if(error) throw error; return true;
+    await upsertSetting("monetization", JSON.stringify(monetization())); return true;
   }catch(e){ toast("Saved locally. Supabase app_settings: "+e.message); return false; }
 }
 (async()=>{ await initSupabase();
