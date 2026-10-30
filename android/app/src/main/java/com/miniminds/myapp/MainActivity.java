@@ -1,4 +1,4 @@
-package com.miniminds.school;
+package com.miniminds.myapp;
 
 import android.app.Activity;
 import android.os.Bundle;
