@@ -214,7 +214,7 @@ function landingView(){
   <section class="wrap" id="features"><h2 style="text-align:center">${fr?"Pourquoi les familles choisissent MiniMINDS":"Why families choose MiniMINDS"}</h2>
     <div class="grid">${features.map(f=>`<div class="card"><div class="icon">${f[0]}</div><h3>${f[1]}</h3><small style="font-size:15px;color:#555">${f[2]}</small></div>`).join("")}</div></section>
   <section class="wrap" id="categories"><h2 style="text-align:center">${fr?"Que vont apprendre les enfants ?":"What will kids learn?"}</h2>
-    <div class="grid">${cats.map(c=>`<a class="card" href="#/category/${c.id}"><div class="icon">${c.icon||"📚"}</div><h3>${nameOf(c)}</h3><small>${fr?c.name_en:c.name_fr}</small></a>`).join("")}</div></section>
+    <div class="grid">${cats.map(c=>`<a class="card" href="#/category/${c.id}"><div class="icon">${c.image_url?`<img src="${c.image_url}" alt="">`:(c.icon||"📚")}</div><h3>${nameOf(c)}</h3><small>${fr?c.name_en:c.name_fr}</small></a>`).join("")}</div></section>
   <section class="wrap"><h2 style="text-align:center">${fr?"Comment ça marche":"How it works"}</h2>
     <div class="grid">
       <div class="card"><div class="icon">1️⃣</div><h3>${fr?"Choisis une catégorie":"Pick a category"}</h3><small>${fr?"Animaux, couleurs, nombres et plus.":"Animals, colors, numbers and more."}</small></div>
@@ -237,7 +237,7 @@ function homeView(){
   ${state.settings.maintenance?`<div class="notice">Maintenance mode is ON (set in Admin &gt; Settings).</div>`:""}
   ${adSlot("app")}
   <h2>${s.choose}</h2><div class="grid">${cats.map(c=>{const p=state.progress[c.id]||{stars:0}; const total=state.data.vocabulary.filter(v=>v.category_id===c.id).length; const pct=total?Math.min(100,(p.stars/(total))*100):0; const locked=premiumCatList().includes(String(c.id))&&!isPremium();
-    return `<a class="card" href="${locked?"#/pricing":`#/category/${c.id}`}"><div class="icon">${locked?"🔒":(c.icon||"📚")}</div><h3>${nameOf(c)}</h3><small>${state.lang==="fr"?c.name_en:c.name_fr} • ${total} • ⭐ ${p.stars}${locked?" • ⭐ Premium":""}</small><div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div></a>`}).join("")}</div>
+    return `<a class="card" href="${locked?"#/pricing":`#/category/${c.id}`}"><div class="icon">${locked?"🔒":(c.image_url?`<img src="${c.image_url}" alt="">`:(c.icon||"📚"))}</div><h3>${nameOf(c)}</h3><small>${state.lang==="fr"?c.name_en:c.name_fr} • ${total} • ⭐ ${p.stars}${locked?" • ⭐ Premium":""}</small><div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div></a>`}).join("")}</div>
   <h2 style="margin-top:30px">❓ ${state.lang==="fr"?"Zone Quiz":"Quiz Zone"} (10 questions)</h2>
   <div class="tabs"><a class="btn coral" href="#/quiz/mix">🌍 ${state.lang==="fr"?"Grand Quiz Mixte":"Big Mix Quiz"}</a><a class="btn primary" href="#/quiz/alphabet">🔤 ${state.lang==="fr"?"Quiz Alphabet":"Alphabet Quiz"}</a><a class="btn teal" href="#/quiz/animals">🦁 ${state.lang==="fr"?"Quiz Animaux":"Animals Quiz"}</a><a class="btn sun" href="#/quiz/numbers">🔢 ${state.lang==="fr"?"Quiz Nombres":"Numbers Quiz"}</a><a class="btn primary" href="#/quiz/colors">🎨 ${state.lang==="fr"?"Quiz Couleurs":"Colors Quiz"}</a></div>
   <p style="text-align:center;margin-top:26px"><span class="badge"><span class="icon">🦉</span><br><b>${state.lang==="fr"?"Mimi la chouette t'encourage !":"Mimi the Owl is cheering for you!"}</b></span></p></main>` + copyrightFooter();
@@ -264,7 +264,7 @@ function categoryView(id){
     <small>${(state.flashIdx%words.length)+1} / ${words.length}</small></div>`:`<div class="notice">No words yet. Add them in Admin.</div>`;
   } else if(state.tab==="quiz"){ body=quizView(cat,words); }
   else { body=matchView(cat,words); }
-  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1 style="text-align:center">${cat.icon} ${nameOf(cat)}</h1>
+  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1 style="text-align:center">${cat.image_url?`<img src="${cat.image_url}" alt="" class="title-img">`:`${cat.icon}`} ${nameOf(cat)}</h1>
   <div class="tabs"><button class="pill ${state.tab==='flash'?'active':''}" onclick="setTab('flash')">🃏 ${s.flashcards}</button>
   <button class="pill ${state.tab==='quiz'?'active':''}" onclick="startQuiz('${id}')">❓ ${s.quiz}</button>
   <button class="pill ${state.tab==='match'?'active':''}" onclick="startMatch('${id}')">🧩 ${s.match}</button></div>
@@ -278,7 +278,7 @@ function quizView(cat,words){
   if(!state.quiz||state.quiz.cat!==cat.id) startQuiz(cat.id,true);
   const q=state.quiz; if(q.done) return `<div class="flash"><div class="big">🏆</div><h2>${t().finished}</h2><p>${t().score}: ${q.score}/${q.questions.length} • ⭐ ${q.stars}</p><button class="btn primary" onclick="startQuiz('${cat.id}')">${t().playAgain}</button> <a class="btn" href="#/app">${t().back}</a></div>`;
   const cur=q.questions[q.idx];
-  return `<div style="text-align:center"><p style="font-weight:900">${t().whatIs} ${state.lang==="en"?"French":"English"}?</p><div class="flash" style="padding:18px"><div class="big" style="font-size:80px;${cur.color?`color:${cur.color}`:''}">${cur.icon||"❓"}</div><h2>${wordOf(cur)}</h2><button class="speak" onclick="speak('${wordOf(cur).replace(/'/g,"\\'")}','${state.lang}')">🔊 ${t().listen}</button></div>
+  return `<div style="text-align:center"><p style="font-weight:900">${t().whatIs} ${state.lang==="en"?"French":"English"}?</p><div class="flash" style="padding:18px"><div class="big" style="font-size:80px;${cur.color?`color:${cur.color}`:''}">${cur.image_url?`<img src="${cur.image_url}" alt="" style="max-width:180px;max-height:180px">`:(cur.icon||"❓")}</div><h2>${wordOf(cur)}</h2><button class="speak" onclick="speak('${wordOf(cur).replace(/'/g,"\\'")}','${state.lang}')">🔊 ${t().listen}</button></div>
   <div class="options">${q.options.map(o=>`<button class="opt" onclick="answerQuiz(this,'${o.replace(/'/g,"\\'")}')">${o}</button>`).join("")}</div><p>${q.idx+1}/${q.questions.length} • ${t().score}: ${q.score}</p></div>`;
 }
 window.startQuiz=(id,silent)=>{ const words=id==="mix"?state.data.vocabulary:state.data.vocabulary.filter(v=>String(v.category_id)===String(id)); const qs=[...words].sort(()=>Math.random()-.5).slice(0,Math.min(10,words.length));
@@ -295,7 +295,7 @@ window.startMatch=id=>{ const words=state.data.vocabulary.filter(v=>String(v.cat
 function matchView(cat,words){
   if(!state.match||state.match.cat!==cat.id) startMatch(cat.id);
   const m=state.match;
-  return `<p style="text-align:center;font-weight:900">${t().tapPair}</p><div class="match-grid"><div class="match-col">${m.imgs.map(w=>`<button class="match-item ${m.done.includes(w.id)?'done':''} ${m.selImg===w.id?'sel':''}" onclick="pickImg('${w.id}')"><span style="font-size:38px;${w.color?`color:${w.color}`:''}">${w.icon||"❓"}</span></button>`).join("")}</div>
+  return `<p style="text-align:center;font-weight:900">${t().tapPair}</p><div class="match-grid"><div class="match-col">${m.imgs.map(w=>`<button class="match-item ${m.done.includes(w.id)?'done':''} ${m.selImg===w.id?'sel':''}" onclick="pickImg('${w.id}')"><span style="font-size:38px;${w.color?`color:${w.color}`:''}">${w.image_url?`<img src="${w.image_url}" alt="" class="match-img">`:(w.icon||"❓")}</span></button>`).join("")}</div>
   <div class="match-col">${m.wordsShuffled.map(w=>`<button class="match-item ${m.done.includes(w.id)?'done':''} ${m.selWord===w.id?'sel':''}" onclick="pickWord('${w.id}')">${otherWord(w)}</button>`).join("")}</div></div>
   <p style="text-align:center;font-weight:900">${m.done.length}/${m.words.length}</p>`;
 }
@@ -311,8 +311,8 @@ function quizPage(id){
   return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1 style="text-align:center">${cat.icon} ${nameOf(cat)} - ${t().quiz}</h1><div id="feedback" class="feedback"></div>${quizView(cat,words)}</main>`;
 }
 
-function storiesView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>📖 ${s.stories}</h1>${state.data.stories.map(st=>`<article class="story"><h2>${st.icon||"📖"} ${state.lang==="fr"?st.title_fr:st.title_en}</h2><p>${state.lang==="fr"?st.content_fr:st.content_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?st.content_en:st.content_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?st.content_fr:st.content_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.readMe}</button></article>`).join("")}</main>`; }
-function songsView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🎵 ${s.songs}</h1>${state.data.songs.map(sg=>`<article class="story"><h2>${sg.icon||"🎵"} ${state.lang==="fr"?sg.title_fr:sg.title_en}</h2><p>${state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?sg.lyrics_en:sg.lyrics_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.listen}</button></article>`).join("")}</main>`; }
+function storiesView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>📖 ${s.stories}</h1>${state.data.stories.map(st=>`<article class="story">${st.image_url?`<img src="${st.image_url}" alt="" class="story-img">`:""}<h2>${st.icon||"📖"} ${state.lang==="fr"?st.title_fr:st.title_en}</h2><p>${state.lang==="fr"?st.content_fr:st.content_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?st.content_en:st.content_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?st.content_fr:st.content_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.readMe}</button></article>`).join("")}</main>`; }
+function songsView(){ const s=t(); return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🎵 ${s.songs}</h1>${state.data.songs.map(sg=>`<article class="story">${sg.image_url?`<img src="${sg.image_url}" alt="" class="story-img">`:""}<h2>${sg.icon||"🎵"} ${state.lang==="fr"?sg.title_fr:sg.title_en}</h2><p>${state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en}</p><p style="color:#6C5CE7">${state.lang==="fr"?sg.lyrics_en:sg.lyrics_fr}</p><button class="speak" onclick="speak(\`${(state.lang==="fr"?sg.lyrics_fr:sg.lyrics_en).replace(/`/g,"")}\`,'${state.lang}')">🔊 ${s.listen}</button></article>`).join("")}</main>`; }
 function rewardsView(){ const s=t(); const stars=totalStars(); const earned=state.data.badges.filter(b=> stars>= (b.id==="badge1"?1:b.id==="badge2"?10:b.id==="badge3"?25:0) && (b.id!=="badge4"||Object.keys(state.progress).length>=5));
   return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🏆 ${s.rewards}</h1><div class="flash"><div class="big">⭐ ${stars}</div><p>${s.stars}</p></div><h2>Badges</h2>${earned.length?earned.map(b=>`<span class="badge"><span class="icon">${b.icon}</span><br><b>${state.lang==="fr"?b.name_fr:b.name_en}</b></span>`).join(""):`<div class="notice">${s.rewardsEmpty}</div>`}<h2>Progress</h2>${state.data.categories.map(c=>{const p=state.progress[c.id]||{stars:0};return `<div class="bar-row"><span>${c.icon} ${nameOf(c)}</span><div class="progress"><i style="width:${Math.min(100,p.stars*20)}%"></i></div><span>⭐${p.stars}</span></div>`}).join("")}</main>`; }
 
@@ -358,13 +358,58 @@ function adminDashboard(){
 }
 function tableView(type){
   const d=state.data; let rows="", cols="";
-  if(type==="categories"){ cols="<th>Icon</th><th>EN</th><th>FR</th><th>Age</th><th>Active</th><th></th>"; rows=d.categories.map(c=>`<tr><td>${c.icon}</td><td>${c.name_en}</td><td>${c.name_fr}</td><td>${c.age_group}</td><td>${c.is_active!==false?"Yes":"No"}</td><td><a href="#/admin/edit/categories/${c.id}">Edit</a> • <a href="#" onclick="delItem('categories','${c.id}');return false">Delete</a></td></tr>`).join(""); }
-  if(type==="vocabulary"){ cols="<th>Icon</th><th>EN</th><th>FR</th><th>Category</th><th></th>"; rows=d.vocabulary.map(v=>`<tr><td>${v.icon||""}</td><td>${v.word_en}</td><td>${v.word_fr}</td><td>${v.category_id}</td><td><a href="#/admin/edit/vocabulary/${v.id}">Edit</a> • <a href="#" onclick="delItem('vocabulary','${v.id}');return false">Delete</a></td></tr>`).join(""); }
-  if(type==="stories"){ cols="<th>Title EN</th><th>Title FR</th><th>Age</th><th></th>"; rows=d.stories.map(s=>`<tr><td>${s.title_en}</td><td>${s.title_fr}</td><td>${s.age_group}</td><td><a href="#/admin/edit/stories/${s.id}">Edit</a> • <a href="#" onclick="delItem('stories','${s.id}');return false">Delete</a></td></tr>`).join(""); }
-  if(type==="songs"){ cols="<th>Title EN</th><th>Title FR</th><th></th>"; rows=d.songs.map(s=>`<tr><td>${s.title_en}</td><td>${s.title_fr}</td><td><a href="#/admin/edit/songs/${s.id}">Edit</a> • <a href="#" onclick="delItem('songs','${s.id}');return false">Delete</a></td></tr>`).join(""); }
+  if(type==="categories"){ cols="<th>Icon</th><th>EN</th><th>FR</th><th>Age</th><th>Active</th><th></th>"; rows=d.categories.map(c=>`<tr><td>${c.image_url?`<img src="${c.image_url}" alt="" class="thumb">`:c.icon}</td><td>${c.name_en}</td><td>${c.name_fr}</td><td>${c.age_group}</td><td>${c.is_active!==false?"Yes":"No"}</td><td><a href="#/admin/edit/categories/${c.id}">Edit</a> • <a href="#" onclick="delItem('categories','${c.id}');return false">Delete</a></td></tr>`).join(""); }
+  if(type==="vocabulary"){ cols="<th>Icon</th><th>EN</th><th>FR</th><th>Category</th><th></th>"; rows=d.vocabulary.map(v=>`<tr><td>${v.image_url?`<img src="${v.image_url}" alt="" class="thumb">`:(v.icon||"")}</td><td>${v.word_en}</td><td>${v.word_fr}</td><td>${v.category_id}</td><td><a href="#/admin/edit/vocabulary/${v.id}">Edit</a> • <a href="#" onclick="delItem('vocabulary','${v.id}');return false">Delete</a></td></tr>`).join(""); }
+  if(type==="stories"){ cols="<th>Title EN</th><th>Title FR</th><th>Age</th><th></th>"; rows=d.stories.map(s=>`<tr><td>${s.image_url?`<img src="${s.image_url}" alt="" class="thumb"> `:""}${s.title_en}</td><td>${s.title_fr}</td><td>${s.age_group}</td><td><a href="#/admin/edit/stories/${s.id}">Edit</a> • <a href="#" onclick="delItem('stories','${s.id}');return false">Delete</a></td></tr>`).join(""); }
+  if(type==="songs"){ cols="<th>Title EN</th><th>Title FR</th><th></th>"; rows=d.songs.map(s=>`<tr><td>${s.image_url?`<img src="${s.image_url}" alt="" class="thumb"> `:""}${s.title_en}</td><td>${s.title_fr}</td><td><a href="#/admin/edit/songs/${s.id}">Edit</a> • <a href="#" onclick="delItem('songs','${s.id}');return false">Delete</a></td></tr>`).join(""); }
   return adminShell(`<h1 style="text-transform:capitalize">${type}</h1><p><a class="btn primary" href="#/admin/edit/${type}/new">+ Add ${type.slice(0,-1)}</a> <input id="q" placeholder="Search..." oninput="filterTable(this.value)" style="max-width:260px;display:inline-block"></p><table id="tbl"><thead><tr>${cols}</tr></thead><tbody>${rows}</tbody></table>`,"#/admin/"+type);
 }
 window.filterTable=q=>{ document.querySelectorAll("#tbl tbody tr").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?"":"none"); };
+
+function dataURLtoBlob(d){ const p=d.split(","), bin=atob(p[1]), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:"image/jpeg"}); }
+function picField(label,val){
+  return `<label>${label}</label><input id="f_image_url" value="${String(val??"").replace(/"/g,"&quot;")}" placeholder="Image URL, or upload a file below">
+  <div style="margin:6px 0"><input type="file" id="f_image_file" accept="image/*" onchange="uploadImage(this)">
+  <div id="img_preview" style="margin-top:8px">${val&&!String(val).startsWith("data:")?`<img src="${val}" alt="">`:""}</div>
+  <small id="img_status" style="color:#00B894;font-weight:800"></small></div>`;
+}
+window.uploadImage=async(inp)=>{
+  const file=inp.files&&inp.files[0]; if(!file) return;
+  if(!file.type.startsWith("image/")){ toast("Please choose an image file"); return; }
+  const status=$("#img_status"); if(status) status.textContent="Processing picture...";
+  try{
+    const dataUrl=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onerror=()=>rej(new Error("cannot read file"));
+      r.onload=()=>{
+        const img=new Image();
+        img.onerror=()=>rej(new Error("not a valid image"));
+        img.onload=()=>{
+          const max=900, s=Math.min(1,max/Math.max(img.width,img.height));
+          const cv=document.createElement("canvas");
+          cv.width=Math.round(img.width*s); cv.height=Math.round(img.height*s);
+          cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+          res(cv.toDataURL("image/jpeg",0.75));
+        };
+        img.src=r.result;
+      };
+      r.readAsDataURL(file);
+    });
+    let url=dataUrl;
+    if(sb){
+      const path=`content/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
+      const {error}=await sb.storage.from("images").upload(path, dataURLtoBlob(dataUrl), {upsert:true, contentType:"image/jpeg"});
+      if(error) throw error;
+      const {data}=sb.storage.from("images").getPublicUrl(path);
+      url=data.publicUrl;
+    }
+    const fi=$("#f_image_url"); if(fi) fi.value=url;
+    const pv=$("#img_preview"); if(pv) pv.innerHTML=`<img src="${url}" alt="">`;
+    if(status) status.textContent="✓ Picture ready - click Save";
+    toast(sb?"Picture uploaded":"Picture added (click Save)");
+  }catch(e){ if(status) status.textContent=""; toast("Upload error: "+e.message); }
+  inp.value="";
+};
 
 async function dbSave(table, obj, isNew){
   if(sb){ const {error}= isNew? await sb.from(table).insert(obj) : await sb.from(table).update(obj).eq("id",obj.id); if(error) throw error; await loadData(); }
@@ -380,19 +425,19 @@ function editView(type,id){
   const isNew=id==="new"; const item=isNew?{}:(state.data[type].find(x=>String(x.id)===String(id))||{});
   let fields="";
   const f=(k,label,val="",ta=false)=>`<label>${label}</label>${ta?`<textarea id="f_${k}" rows="4">${val||""}</textarea>`:`<input id="f_${k}" value="${String(val??"").replace(/"/g,"&quot;")}">`}`;
-  if(type==="categories") fields=f("name_en","Name EN",item.name_en)+f("name_fr","Name FR",item.name_fr)+f("icon","Icon (emoji)",item.icon)+f("color","Color",item.color||"#6C5CE7")+`<label>Age group</label><select id="f_age_group"><option ${item.age_group==="3-5"?"selected":""}>3-5</option><option ${item.age_group==="6-8"?"selected":""}>6-8</option><option ${item.age_group==="3-8"?"selected":""}>3-8</option></select>`+f("sort_order","Sort order",item.sort_order||1)+`<label>Active</label><select id="f_is_active"><option value="true" ${item.is_active!==false?"selected":""}>Yes</option><option value="false" ${item.is_active===false?"selected":""}>No</option></select>`;
-  if(type==="vocabulary") fields=`<label>Category</label><select id="f_category_id">${state.data.categories.map(c=>`<option value="${c.id}" ${item.category_id===c.id?"selected":""}>${c.name_en}</option>`).join("")}</select>`+f("word_en","Word EN",item.word_en)+f("word_fr","Word FR",item.word_fr)+f("icon","Icon (emoji)",item.icon)+f("image_url","Image URL (optional)",item.image_url)+f("color","Color (for colors category)",item.color)+f("sort_order","Sort order",item.sort_order||1);
-  if(type==="stories") fields=f("title_en","Title EN",item.title_en)+f("title_fr","Title FR",item.title_fr)+f("icon","Icon",item.icon)+f("age_group","Age group",item.age_group||"3-5")+f("content_en","Content EN",item.content_en,true)+f("content_fr","Content FR",item.content_fr,true)+f("audio_url","Audio URL (optional)",item.audio_url);
-  if(type==="songs") fields=f("title_en","Title EN",item.title_en)+f("title_fr","Title FR",item.title_fr)+f("icon","Icon",item.icon)+f("lyrics_en","Lyrics EN",item.lyrics_en,true)+f("lyrics_fr","Lyrics FR",item.lyrics_fr,true)+f("audio_url","Audio URL (optional)",item.audio_url);
+  if(type==="categories") fields=f("name_en","Name EN",item.name_en)+f("name_fr","Name FR",item.name_fr)+f("icon","Icon (emoji)",item.icon)+f("color","Color",item.color||"#6C5CE7")+picField("Category picture (optional, shown on the card)",item.image_url)+`<label>Age group</label><select id="f_age_group"><option ${item.age_group==="3-5"?"selected":""}>3-5</option><option ${item.age_group==="6-8"?"selected":""}>6-8</option><option ${item.age_group==="3-8"?"selected":""}>3-8</option></select>`+f("sort_order","Sort order",item.sort_order||1)+`<label>Active</label><select id="f_is_active"><option value="true" ${item.is_active!==false?"selected":""}>Yes</option><option value="false" ${item.is_active===false?"selected":""}>No</option></select>`;
+  if(type==="vocabulary") fields=`<label>Category</label><select id="f_category_id">${state.data.categories.map(c=>`<option value="${c.id}" ${item.category_id===c.id?"selected":""}>${c.name_en}</option>`).join("")}</select>`+f("word_en","Word EN",item.word_en)+f("word_fr","Word FR",item.word_fr)+f("icon","Icon (emoji)",item.icon)+picField("Picture (optional, replaces the emoji on flashcards)",item.image_url)+f("color","Color (for colors category)",item.color)+f("sort_order","Sort order",item.sort_order||1);
+  if(type==="stories") fields=f("title_en","Title EN",item.title_en)+f("title_fr","Title FR",item.title_fr)+f("icon","Icon",item.icon)+picField("Picture (optional)",item.image_url)+f("age_group","Age group",item.age_group||"3-5")+f("content_en","Content EN",item.content_en,true)+f("content_fr","Content FR",item.content_fr,true)+f("audio_url","Audio URL (optional)",item.audio_url);
+  if(type==="songs") fields=f("title_en","Title EN",item.title_en)+f("title_fr","Title FR",item.title_fr)+f("icon","Icon",item.icon)+picField("Picture (optional)",item.image_url)+f("lyrics_en","Lyrics EN",item.lyrics_en,true)+f("lyrics_fr","Lyrics FR",item.lyrics_fr,true)+f("audio_url","Audio URL (optional)",item.audio_url);
   return adminShell(`<h1>${isNew?"Add":"Edit"} ${type.slice(0,-1)}</h1><div class="form-card">${fields}<button class="btn primary" onclick="saveItem('${type}','${id}')">Save</button> <a class="btn" href="#/admin/${type}">Cancel</a><p><small>${sb?"Saving writes to Supabase table: "+type:"Demo Mode: saving to localStorage (connect Supabase for cloud)"}</small></p></div>`,"#/admin/"+type);
 }
 window.saveItem=async(type,id)=>{
   const val=k=>{const e=$("#f_"+k); return e?e.value.trim():"";}; const isNew=id==="new";
   let obj={id:isNew?("id"+Date.now()):id};
-  if(type==="categories") obj={...obj,name_en:val("name_en"),name_fr:val("name_fr"),icon:val("icon"),color:val("color"),age_group:val("age_group"),sort_order:Number(val("sort_order")||1),is_active:val("is_active")==="true"};
+  if(type==="categories") obj={...obj,name_en:val("name_en"),name_fr:val("name_fr"),icon:val("icon"),color:val("color"),image_url:val("image_url")||null,age_group:val("age_group"),sort_order:Number(val("sort_order")||1),is_active:val("is_active")==="true"};
   if(type==="vocabulary") obj={...obj,category_id:val("category_id"),word_en:val("word_en"),word_fr:val("word_fr"),icon:val("icon"),image_url:val("image_url")||null,color:val("color")||null,sort_order:Number(val("sort_order")||1),is_active:true};
-  if(type==="stories") obj={...obj,title_en:val("title_en"),title_fr:val("title_fr"),icon:val("icon"),age_group:val("age_group"),content_en:val("content_en"),content_fr:val("content_fr"),audio_url:val("audio_url")||null};
-  if(type==="songs") obj={...obj,title_en:val("title_en"),title_fr:val("title_fr"),icon:val("icon"),lyrics_en:val("lyrics_en"),lyrics_fr:val("lyrics_fr"),audio_url:val("audio_url")||null};
+  if(type==="stories") obj={...obj,title_en:val("title_en"),title_fr:val("title_fr"),icon:val("icon"),image_url:val("image_url")||null,age_group:val("age_group"),content_en:val("content_en"),content_fr:val("content_fr"),audio_url:val("audio_url")||null};
+  if(type==="songs") obj={...obj,title_en:val("title_en"),title_fr:val("title_fr"),icon:val("icon"),image_url:val("image_url")||null,lyrics_en:val("lyrics_en"),lyrics_fr:val("lyrics_fr"),audio_url:val("audio_url")||null};
   if(sb && isNew) delete obj.id;
   try{ await dbSave(type,obj,isNew); toast("Saved"); location.hash="#/admin/"+type; render(); }catch(e){ toast("Error: "+e.message); }
 };

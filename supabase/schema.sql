@@ -114,14 +114,18 @@ insert into public.categories(id,name_en,name_fr,icon,color,age_group,sort_order
 ('alphabet','Alphabet','Alphabet','🔤','#6C5CE7','3-5',1),('numbers','Numbers','Les Nombres','🔢','#00B894','3-5',2),
 ('colors','Colors','Les Couleurs','🎨','#E17055','3-5',3),('animals','Animals','Les Animaux','🦁','#FDCB6E','3-8',4),
 ('fruits','Fruits & Vegetables','Fruits et Légumes','🍎','#D63031','3-8',5),('body','Body Parts','Le Corps','👀','#0984E3','6-8',6),
-('shapes','Shapes','Les Formes','⭐','#E84393','3-5',7),('daily','Everyday Words','Mots du Quotidien','🏠','#00CEC9','6-8',8)
+('shapes','Shapes','Les Formes','⭐','#E84393','3-5',7),('daily','Everyday Words','Mots du Quotidien','🏠','#00CEC9','6-8',8),
+('coloring','Coloring','Coloriage','🖍️','#A29BFE','3-5',9)
 on conflict (id) do nothing;
 
 insert into public.vocabulary(category_id,word_en,word_fr,icon,sort_order) values
 ('animals','Lion','Lion','🦁',1),('animals','Cat','Chat','🐱',2),('animals','Dog','Chien','🐶',3),('animals','Elephant','Éléphant','🐘',4),
 ('colors','Red','Rouge','●',1),('colors','Blue','Bleu','●',2),('colors','Yellow','Jaune','●',3),('colors','Green','Vert','●',4),
 ('numbers','One','Un','1',1),('numbers','Two','Deux','2',2),('numbers','Three','Trois','3',3),('numbers','Four','Quatre','4',4),
-('fruits','Apple','Pomme','🍎',1),('fruits','Banana','Banane','🍌',2),('daily','Hello','Bonjour','👋',1),('daily','Thank you','Merci','🙏',2)
+('fruits','Apple','Pomme','🍎',1),('fruits','Banana','Banane','🍌',2),('daily','Hello','Bonjour','👋',1),('daily','Thank you','Merci','🙏',2),
+('coloring','Crayon','Crayon de couleur','🖍️',1),('coloring','Paint','Peinture','🎨',2),('coloring','Brush','Pinceau','🖌️',3),
+('coloring','Marker','Feutre','🖊️',4),('coloring','Scissors','Ciseaux','✂️',5),('coloring','Drawing','Dessin','🖼️',6),
+('coloring','Rainbow','Arc-en-ciel','🌈',7),('coloring','Star','Étoile','⭐',8)
 on conflict do nothing;
 
 insert into public.stories(title_en,title_fr,content_en,content_fr,icon,age_group) values

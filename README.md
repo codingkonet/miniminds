@@ -41,7 +41,8 @@ Tables: `profiles`, `kid_profiles`, `categories`, `vocabulary`, `quizzes`, `stor
 ## Features
 
 - EN/FR toggle for the whole UI, flashcards show both languages with text-to-speech (`en-US` / `fr-FR`)
-- Age filter 3-5 / 6-8, 11 categories, 158 words (full A-Z alphabet, numbers 1-20), 10-question quizzes + Big Mix Quiz
+- Age filter 3-5 / 6-8, 12 categories (incl. **Coloring / Coloriage**), 170 words (full A-Z alphabet, numbers 1-20), 10-question quizzes + Big Mix Quiz
+- Pictures: admins can **upload pictures** (file picker) or paste an image URL when editing a category / word / story / song. Uploads go to Supabase Storage bucket `images` (auto-compressed to 900px JPEG); in Demo Mode the compressed image is stored locally. Pictures replace emojis on flashcards, quiz, matching game, category cards, stories and songs
 - Games: Flashcards, Quiz (stars by score), Matching game
 - Stories and songs with read-aloud, Rewards page with badges
 - Parent dashboard (PIN protected): stars, progress by category, reset

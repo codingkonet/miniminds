@@ -11,7 +11,8 @@ window.MM_SEED = {
     { id: "daily", name_en: "Everyday Words", name_fr: "Mots du Quotidien", icon: "🏠", color: "#00CEC9", age_group: "6-8", sort_order: 8, is_active: true },
     { id: "school", name_en: "School", name_fr: "L'École", icon: "🎒", color: "#F39C12", age_group: "6-8", sort_order: 9, is_active: true },
     { id: "nature", name_en: "Nature & Weather", name_fr: "Nature et Météo", icon: "🌳", color: "#27AE60", age_group: "3-8", sort_order: 10, is_active: true },
-    { id: "food", name_en: "Food", name_fr: "La Nourriture", icon: "🍔", color: "#E67E22", age_group: "3-8", sort_order: 11, is_active: true }
+    { id: "food", name_en: "Food", name_fr: "La Nourriture", icon: "🍔", color: "#E67E22", age_group: "3-8", sort_order: 11, is_active: true },
+    { id: "coloring", name_en: "Coloring", name_fr: "Coloriage", icon: "🖍️", color: "#A29BFE", age_group: "3-5", sort_order: 12, is_active: true }
   ],
   vocabulary: [
     // Alphabet
@@ -35,7 +36,9 @@ window.MM_SEED = {
     // Nature & Weather
     ...[["Sun","Soleil","☀️"],["Moon","Lune","🌙"],["Rain","Pluie","🌧️"],["Snow","Neige","❄️"],["Cloud","Nuage","☁️"],["Tree","Arbre","🌳"],["Flower","Fleur","🌸"],["Sea","Mer","🌊"],["Mountain","Montagne","⛰️"],["Rainbow","Arc-en-ciel","🌈"]].map((v,i)=>({id:"nat"+i,category_id:"nature",word_en:v[0],word_fr:v[1],icon:v[2],sort_order:i+1,is_active:true})),
     // Food
-    ...[["Bread","Pain","🍞"],["Cheese","Fromage","🧀"],["Milk","Lait","🥛"],["Egg","Œuf","🥚"],["Cake","Gâteau","🎂"],["Rice","Riz","🍚"],["Soup","Soupe","🍲"],["Pizza","Pizza","🍕"],["Chocolate","Chocolat","🍫"],["Honey","Miel","🍯"]].map((v,i)=>({id:"foo"+i,category_id:"food",word_en:v[0],word_fr:v[1],icon:v[2],sort_order:i+1,is_active:true}))
+    ...[["Bread","Pain","🍞"],["Cheese","Fromage","🧀"],["Milk","Lait","🥛"],["Egg","Œuf","🥚"],["Cake","Gâteau","🎂"],["Rice","Riz","🍚"],["Soup","Soupe","🍲"],["Pizza","Pizza","🍕"],["Chocolate","Chocolat","🍫"],["Honey","Miel","🍯"]].map((v,i)=>({id:"foo"+i,category_id:"food",word_en:v[0],word_fr:v[1],icon:v[2],sort_order:i+1,is_active:true})),
+    // Coloring
+    ...[["Crayon","Crayon de couleur","🖍️"],["Paint","Peinture","🎨"],["Brush","Pinceau","🖌️"],["Marker","Feutre","🖊️"],["Scissors","Ciseaux","✂️"],["Drawing","Dessin","🖼️"],["Rainbow","Arc-en-ciel","🌈"],["Star","Étoile","⭐"],["Heart","Cœur","❤️"],["Butterfly","Papillon","🦋"],["Flower","Fleur","🌸"],["Sun","Soleil","☀️"]].map((v,i)=>({id:"crn"+i,category_id:"coloring",word_en:v[0],word_fr:v[1],icon:v[2],sort_order:i+1,is_active:true}))
   ],
   stories: [
     { id: "story1", title_en: "Léo the Little Lion", title_fr: "Léo le petit lion", age_group: "3-5", icon: "🦁",
