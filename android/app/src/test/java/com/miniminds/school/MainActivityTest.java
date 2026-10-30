@@ -33,7 +33,9 @@ public class MainActivityTest {
             assertTrue(content.getChildAt(0) instanceof WebView);
             WebView webView = (WebView) content.getChildAt(0);
             ShadowWebView shadow = Shadows.shadowOf(webView);
-            assertEquals("file:///android_asset/www/index.html#/app", shadow.getLastLoadedUrl());
+            assertEquals(MainActivity.ONLINE_URL, shadow.getLastLoadedUrl());
+            assertTrue(MainActivity.ONLINE_URL.startsWith("https://"));
+            assertTrue(MainActivity.OFFLINE_URL.startsWith("file:///android_asset/"));
             assertTrue(webView.getSettings().getJavaScriptEnabled());
             assertTrue(webView.getSettings().getDomStorageEnabled());
         }

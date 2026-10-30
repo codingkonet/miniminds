@@ -1,6 +1,7 @@
 # MiniMINDS Android
 
-Package: `com.miniminds.school` - version 1.0.4 (5), minSdk 26, targetSdk 34. Opens directly at `#/app` (the online landing page at `/` is for the web).
+Package: `com.miniminds.school` - version 1.0.5 (6), minSdk 26, targetSdk 34.
+Online-first: the app loads the live site `https://codingkonet.github.io/miniminds/#/app`, so web updates sync to Android without a new APK. If offline/unreachable it falls back to the bundled copy in the APK (which is why the web app is still copied into assets at build time). Keep the `gh-pages` branch in sync on every push: `git push origin main:gh-pages`.
 Native WebView wrapper around the MiniMINDS web app (bundled in assets, works offline in Demo content, connects to Supabase when online). Pronunciation uses native Android TextToSpeech via the `AndroidTTS` bridge.
 
 ## Outputs (in ../dist-android/)
