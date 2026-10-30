@@ -1,6 +1,6 @@
 # MiniMINDS Android
 
-Package: `com.miniminds.myapp` - version 1.0.6 (7), minSdk 26, targetSdk 34.
+Package: `com.miniminds.myapp` - version 1.0.7 (8), minSdk 26, targetSdk 36 (Play Console requirement: API 36+).
 Online-first: the app loads the live site `https://codingkonet.github.io/miniminds/#/app`, so web updates sync to Android without a new APK. If offline/unreachable it falls back to the bundled copy in the APK (which is why the web app is still copied into assets at build time). Keep the `gh-pages` branch in sync on every push: `git push origin main:gh-pages`.
 Native WebView wrapper around the MiniMINDS web app (bundled in assets, works offline in Demo content, connects to Supabase when online). Pronunciation uses native Android TextToSpeech via the `AndroidTTS` bridge.
 
