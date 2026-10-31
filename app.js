@@ -225,7 +225,6 @@ function landingView(){
       <div class="stat">${fr?"Âges":"Ages"}<b>3-8</b></div>
     </div></section>
   <div class="wrap">${adSlot("landing")}</div>
-  <section class="wrap" id="pricing-preview"><h2 style="text-align:center">${fr?"Gratuit ou Premium ?":"Free or Premium?"}</h2>${planCards()}</section>
   <section class="wrap" id="features"><h2 style="text-align:center">${fr?"Pourquoi les familles choisissent MiniMINDS":"Why families choose MiniMINDS"}</h2>
     <div class="grid">${features.map(f=>`<div class="card"><div class="icon">${f[0]}</div><h3>${f[1]}</h3><small style="font-size:15px;color:#555">${f[2]}</small></div>`).join("")}</div></section>
   <section class="wrap" id="categories"><h2 style="text-align:center">${fr?"Que vont apprendre les enfants ?":"What will kids learn?"}</h2>
