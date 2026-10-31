@@ -94,10 +94,14 @@ window.MM_STR = {
     choose:"Choose a category", flashcards:"Flashcards", quiz:"Quiz", match:"Matching Game", listen:"Listen", next:"Next", back:"Back home",
     correct:"Great job!", tryAgain:"Try again!", finished:"You finished!", stars:"stars", score:"Score", playAgain:"Play again",
     whatIs:"What is this in", inFrench:"French", inEnglish:"English", tapPair:"Tap an image, then tap the matching word!",
-    readMe:"Read to me", ageAll:"All ages", rewardsEmpty:"Play a game to earn your first star!" },
+    readMe:"Read to me", ageAll:"All ages", rewardsEmpty:"Play a game to earn your first star!",
+    whoPlays:"Who's playing?", myKids:"My kids", addKid:"Add a child", kidName:"Child's name", kidAge:"Age", kidAvatar:"Avatar",
+    guest:"Guest", viewProfile:"Profile", playingAs:"Playing as", noKids:"No kids yet. Add one from the Parents area.", switchKid:"Play as", kidAdded:"Child added", kidDeleted:"Child removed", kidUpdated:"Profile updated" },
   fr: { tagline:"Apprends le français et l'anglais en jouant !", learn:"Apprendre", play:"Jouer", stories:"Histoires", songs:"Chansons", videos:"Vidéos", rewards:"Mes récompenses", parents:"Parents", admin:"Admin",
     choose:"Choisis une catégorie", flashcards:"Cartes", quiz:"Quiz", match:"Jeu d'association", listen:"Écouter", next:"Suivant", back:"Retour",
     correct:"Bravo !", tryAgain:"Essaie encore !", finished:"Tu as terminé !", stars:"étoiles", score:"Score", playAgain:"Rejouer",
     whatIs:"Comment dit-on ceci en", inFrench:"français", inEnglish:"anglais", tapPair:"Touche une image, puis le mot qui correspond !",
-    readMe:"Lis-moi l'histoire", ageAll:"Tous âges", rewardsEmpty:"Joue à un jeu pour gagner ta première étoile !" }
+    readMe:"Lis-moi l'histoire", ageAll:"Tous âges", rewardsEmpty:"Joue à un jeu pour gagner ta première étoile !",
+    whoPlays:"Qui joue ?", myKids:"Mes enfants", addKid:"Ajouter un enfant", kidName:"Nom de l'enfant", kidAge:"Âge", kidAvatar:"Avatar",
+    guest:"Invité", viewProfile:"Profil", playingAs:"Profil actif", noKids:"Pas encore d'enfants. Ajoute-en un depuis l'espace Parents.", switchKid:"Jouer en tant que", kidAdded:"Enfant ajouté", kidDeleted:"Enfant supprimé", kidUpdated:"Profil mis à jour" }
 };

@@ -43,13 +43,84 @@ function adSlot(place){
   if(hasPaidPlan()) return `<div class="ad-slot"><small>${ads.label}</small><a href="#/pricing" style="font-size:20px;font-weight:900">⭐ MiniMINDS Premium - ${state.lang==="fr"?"Sans publicité, tout débloqué":"No ads, everything unlocked"} →</a></div>`;
   return `<div class="ad-slot"><small>${ads.label}</small></div>`;
 }
-let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, progress: LS.get("mm_progress",{}), settings: LS.get("mm_settings",{appName:"MiniMINDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), user: LS.get("mm_session",null), authMsg:"", tab:"flash", flashIdx:0, quiz:null, match:null };
+let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, allProgress: LS.get("mm_all_progress", null) || {"_guest": LS.get("mm_progress",{})}, activeKid: String(LS.get("mm_active_kid","_guest")), kids: LS.get("mm_kids",[]), progress: {}, editKidId:null, settings: LS.get("mm_settings",{appName:"MiniMINDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), user: LS.get("mm_session",null), authMsg:"", tab:"flash", flashIdx:0, quiz:null, match:null };
+if(!state.allProgress[state.activeKid]) state.allProgress[state.activeKid]={};
+state.progress = state.allProgress[state.activeKid];
+function persistProgress(){ LS.set("mm_all_progress",state.allProgress); LS.set("mm_progress",state.allProgress._guest||{}); }
+function activeKidObj(){ return state.activeKid==="_guest"?null:(state.kids.find(k=>String(k.id)===String(state.activeKid))||null); }
+function kidProgressOf(id){ return state.allProgress[String(id)]||{}; }
+function starsOfProgress(pr){ return Object.values(pr||{}).reduce((a,p)=>a+(p.stars||0),0); }
+function allStars(){ return Object.values(state.allProgress).reduce((a,pr)=>a+starsOfProgress(pr),0); }
+window.setActiveKid=(id)=>{ const key=String(id||"_guest"); if(!state.allProgress[key]) state.allProgress[key]={}; state.activeKid=key; LS.set("mm_active_kid",key); state.progress=state.allProgress[key]; persistProgress(); render(); };
+async function authUid(){ if(!sb) return null; try{ const {data}=await sb.auth.getSession(); return (data&&data.session)?data.session.user.id:null; }catch(e){ return null; } }
+
+// ---------- KIDS PROFILES ----------
+const KID_AVATARS=["🦉","👧","👦","🧒","🦊","🐰","🐼","🦁","🐸","🐯"];
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isRemoteKid(k){ return !!(k && UUID_RE.test(String(k.id))); }
+async function loadKids(){
+  if(sb){
+    const uid=await authUid();
+    if(uid){
+      try{
+        const {data,error}=await sb.from("kid_profiles").select("*").eq("parent_id",uid).order("created_at");
+        if(!error && data){ state.kids=data; LS.set("mm_kids",data); }
+      }catch(e){ /* table missing - local kids stay */ }
+    }
+  }
+  // active kid must exist, else fall back to guest
+  if(state.activeKid!=="_guest" && !state.kids.some(k=>String(k.id)===String(state.activeKid))) state.activeKid="_guest";
+  if(!state.allProgress[state.activeKid]) state.allProgress[state.activeKid]={};
+  state.progress=state.allProgress[state.activeKid];
+}
+window.addKid=async()=>{
+  const s=t(); const name=(($("#kid_name")||{}).value||"").trim(); const age=(($("#kid_age")||{}).value)||"3-5";
+  const av=document.querySelector("input[name=kid_av]:checked");
+  const avatar=av?av.value:KID_AVATARS[0];
+  if(!name){ toast(state.lang==="fr"?"Donne un nom à l'enfant.":"Give the child a name."); return; }
+  const uid=await authUid();
+  let kid=null;
+  if(sb && uid){
+    const {data,error}=await sb.from("kid_profiles").insert({parent_id:uid,name,age_group:age,avatar}).select().single();
+    if(error){ toast("Supabase: "+error.message); return; }
+    kid=data;
+  }else{
+    kid={id:"k"+Date.now()+Math.floor(Math.random()*999), parent_id:uid, name, age_group:age, avatar, created_at:new Date().toISOString()};
+  }
+  state.kids.push(kid); LS.set("mm_kids",state.kids);
+  state.allProgress[String(kid.id)]={};
+  if(state.activeKid==="_guest") setActiveKid(kid.id); else render();
+  toast(s.kidAdded+" 🎉");
+};
+window.updateKid=async()=>{
+  const s=t(); const id=String(state.editKidId); const k=state.kids.find(x=>String(x.id)===id); if(!k) return;
+  const name=(($("#kid_name")||{}).value||"").trim(); const age=(($("#kid_age")||{}).value)||"3-5";
+  const av=document.querySelector("input[name=kid_av]:checked"); const avatar=av?av.value:k.avatar;
+  if(!name){ toast(state.lang==="fr"?"Donne un nom à l'enfant.":"Give the child a name."); return; }
+  k.name=name; k.age_group=age; k.avatar=avatar;
+  if(sb && isRemoteKid(k)){ try{ const {error}=await sb.from("kid_profiles").update({name,age_group:age,avatar}).eq("id",k.id); if(error) throw error; }catch(e){ toast("Supabase: "+e.message); } }
+  state.editKidId=null; LS.set("mm_kids",state.kids); render(); toast(s.kidUpdated+" ✅");
+};
+window.deleteKid=async(id)=>{
+  const s=t(); if(!confirm(state.lang==="fr"?"Supprimer ce profil enfant et sa progression ?":"Delete this kid profile and their progress?")) return;
+  const kid=state.kids.find(x=>String(x.id)===String(id));
+  state.kids=state.kids.filter(x=>String(x.id)!==String(id)); LS.set("mm_kids",state.kids);
+  delete state.allProgress[String(id)];
+  if(state.activeKid===String(id)) state.activeKid="_guest";
+  if(!state.allProgress._guest) state.allProgress._guest={};
+  state.progress=state.allProgress[state.activeKid]; persistProgress();
+  if(sb && isRemoteKid(kid)){ try{ await sb.from("kid_profiles").delete().eq("id",kid.id); }catch(e){} }
+  render(); toast(s.kidDeleted+" 🗑️");
+};
+window.editKid=(id)=>{ state.editKidId=String(id); render(); };
+window.cancelEditKid=()=>{ state.editKidId=null; render(); };
+window.pickAvatar=(emoji)=>{ const inp=document.querySelector(`input[name=kid_av][value="${emoji}"]`); if(inp) inp.checked=true; };
 function authButtons(){
   const fr = state.lang==="fr";
   if(state.user) return `<span class="pill" title="${state.user.email}">👤 ${String(state.user.email||"").split("@")[0]}</span><button class="pill" onclick="logoutAccount()">${fr?"Déconnexion":"Logout"}</button>`;
   return `<a class="pill" href="#/login">${fr?"Se connecter":"Login"}</a><a class="btn primary" href="#/signup">${fr?"S'inscrire":"Sign Up"}</a>`;
 }
-window.logoutAccount = async()=>{ if(sb){ try{ await sb.auth.signOut(); }catch(e){} } state.user=null; LS.set("mm_session",null); LS.set("mm_admin",null); state.admin=null; location.hash="#/"; render(); };
+window.logoutAccount = async()=>{ if(sb){ try{ await sb.auth.signOut(); }catch(e){} } state.user=null; LS.set("mm_session",null); LS.set("mm_admin",null); state.admin=null; await loadKids(); location.hash="#/"; render(); };
 async function checkPremiumSubscription(){
   if(!sb || !state.user) return;
   try{
@@ -65,8 +136,8 @@ function otherWord(v){ return state.lang==="fr" ? v.word_en : v.word_fr; }
 function toast(m){ const d=document.createElement("div"); d.className="toast"; d.textContent=m; document.body.appendChild(d); setTimeout(()=>d.remove(),2600); }
 function speak(text, lang){ if(window.AndroidTTS && window.AndroidTTS.speak){ window.AndroidTTS.speak(String(text), lang==="fr"?"fr":"en"); return; } try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang=lang==="fr"?"fr-FR":"en-US"; u.rate=.85; speechSynthesis.speak(u);}catch(e){} }
 function totalStars(){ return Object.values(state.progress).reduce((a,p)=>a+(p.stars||0),0); }
-function saveProgress(catId, stars, score){ const p=state.progress[catId]||{stars:0,best:0,completed:0}; p.stars=Math.max(p.stars,stars); p.best=Math.max(p.best,score||0); p.completed++; state.progress[catId]=p; LS.set("mm_progress",state.progress);
-  if(sb){ sb.from("progress").insert({category_id:String(catId),stars,score:score||0,completed:true}).then(()=>{},()=>{}); } }
+function saveProgress(catId, stars, score){ const p=state.progress[catId]||{stars:0,best:0,completed:0}; p.stars=Math.max(p.stars,stars); p.best=Math.max(p.best,score||0); p.completed++; state.progress[catId]=p; persistProgress();
+  if(sb){ const k=activeKidObj(); const row={category_id:String(catId),stars,score:score||0,completed:true}; if(isRemoteKid(k)) row.kid_id=k.id; sb.from("progress").insert(row).then(()=>{},()=>{}); } }
 function celebrate(msg){ const d=document.createElement("div"); d.className="celebrate"; d.innerHTML=`<div><div style="font-size:64px">🎉</div><h2>${msg}</h2><p style="font-size:32px">⭐ ⭐ ⭐</p><button class="btn primary" onclick="this.closest('.celebrate').remove()">${t().next} ✓</button></div>`; document.body.appendChild(d); }
 
 async function initSupabase(){
@@ -127,7 +198,7 @@ function authView(isSignup, notice){
 }
 function afterAuthRedirect(){
   const target = LS.get("mm_redirect", "#/app"); localStorage.removeItem("mm_redirect");
-  location.hash = target; render();
+  location.hash = target; render(); loadKids().then(()=>render());
 }
 window.doSignup=async()=>{
   const email=($("#auth_email")||{}).value?.trim()||"", password=($("#auth_pass")||{}).value||"", pname=($("#auth_name")||{}).value?.trim()||"";
@@ -250,6 +321,10 @@ function homeView(){
   <a class="btn sun" href="#/stories">📖 ${s.stories}</a><a class="btn teal" href="#/songs">🎵 ${s.songs}</a><a class="btn" style="background:#FF7675;color:#fff" href="#/videos">🎬 ${s.videos}</a><a class="btn coral" href="#/rewards">🏆 ${s.rewards}</a></div></section>
   ${state.settings.maintenance?`<div class="notice">Maintenance mode is ON (set in Admin &gt; Settings).</div>`:""}
   ${adSlot("app")}
+  <div class="notice" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center"><b>👋 ${s.whoPlays}</b>
+    <button class="pill ${state.activeKid==="_guest"?"active":""}" onclick="setActiveKid('_guest')">🦉 ${s.guest} ⭐${starsOfProgress(state.allProgress._guest)}</button>
+    ${state.kids.map(k=>`<button class="pill ${String(k.id)===String(state.activeKid)?"active":""}" onclick="setActiveKid('${k.id}')">${k.avatar||"🦉"} ${k.name} ⭐${starsOfProgress(kidProgressOf(k.id))}</button>`).join("")}
+    <a class="pill" href="#/parent">➕ ${s.addKid}</a></div>
   <h2>${s.choose}</h2><div class="grid">${cats.map(c=>{const p=state.progress[c.id]||{stars:0}; const total=state.data.vocabulary.filter(v=>v.category_id===c.id).length; const pct=total?Math.min(100,(p.stars/(total))*100):0; const locked=premiumCatList().includes(String(c.id))&&!isPremium();
     return `<a class="card" href="${locked?"#/pricing":`#/category/${c.id}`}"><div class="icon">${locked?"🔒":(c.image_url?`<img src="${c.image_url}" alt="">`:(c.icon||"📚"))}</div><h3>${nameOf(c)}</h3><small>${state.lang==="fr"?c.name_en:c.name_fr} • ${total} • ⭐ ${p.stars}${locked?" • ⭐ Premium":""}</small><div class="progress" style="margin-top:12px"><i style="width:${pct}%"></i></div></a>`}).join("")}</div>
   <h2 style="margin-top:30px">❓ ${state.lang==="fr"?"Zone Quiz":"Quiz Zone"} (10 questions)</h2>
@@ -339,13 +414,57 @@ window.closeVideo=()=>{ state.playingVideo=null; render(); };
 function rewardsView(){ const s=t(); const stars=totalStars(); const earned=state.data.badges.filter(b=> stars>= (b.id==="badge1"?1:b.id==="badge2"?10:b.id==="badge3"?25:0) && (b.id!=="badge4"||Object.keys(state.progress).length>=5));
   return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${s.back}</a><h1>🏆 ${s.rewards}</h1><div class="flash"><div class="big">⭐ ${stars}</div><p>${s.stars}</p></div><h2>Badges</h2>${earned.length?earned.map(b=>`<span class="badge"><span class="icon">${b.icon}</span><br><b>${state.lang==="fr"?b.name_fr:b.name_en}</b></span>`).join(""):`<div class="notice">${s.rewardsEmpty}</div>`}<h2>Progress</h2>${state.data.categories.map(c=>{const p=state.progress[c.id]||{stars:0};return `<div class="bar-row"><span>${c.icon} ${nameOf(c)}</span><div class="progress"><i style="width:${Math.min(100,p.stars*20)}%"></i></div><span>⭐${p.stars}</span></div>`}).join("")}</main>`; }
 
+function kidProfileView(id){
+  const s=t(); const fr=state.lang==="fr"; const k=state.kids.find(x=>String(x.id)===String(id));
+  if(!k) return header()+`<main class="wrap"><a class="btn" href="#/parent">⬅ ${s.back}</a><div class="notice" style="margin-top:20px">${fr?"Profil introuvable.":"Profile not found."}</div></main>`+copyrightFooter();
+  const pr=kidProgressOf(k.id); const stars=starsOfProgress(pr);
+  const earned=state.data.badges.filter(b=> stars>= (b.id==="badge1"?1:b.id==="badge2"?10:b.id==="badge3"?25:0) && (b.id!=="badge4"||Object.keys(pr).length>=5));
+  const active=String(k.id)===String(state.activeKid);
+  return header()+`<main class="wrap"><a class="btn" href="#/parent">⬅ ${s.back}</a>
+  <div class="flash" style="margin-top:20px"><div class="big">${k.avatar||"🦉"}</div><h1>${k.name}</h1><p>${k.age_group||"3-5"} ${fr?"ans":"years old"} • ${active?"🟢 "+s.playingAs:(fr?"Inactif":"Inactive")}</p></div>
+  <div class="stat-grid"><div class="stat">${fr?"Étoiles":"Stars"}<b>⭐ ${stars}</b></div><div class="stat">${fr?"Catégories":"Categories"}<b>${Object.keys(pr).length}</b></div><div class="stat">${fr?"Leçons":"Lessons"}<b>${Object.values(pr).reduce((a,p)=>a+(p.completed||0),0)}</b></div><div class="stat">${fr?"Badges":"Badges"}<b>${earned.length}</b></div></div>
+  ${active?"":`<p style="text-align:center"><button class="btn primary" onclick="setActiveKid('${k.id}');location.hash='#/app'">🎮 ${s.switchKid} ${k.name}</button></p>`}
+  <h2>🏆 ${s.rewards}</h2><p>${earned.length?earned.map(b=>`<span class="badge"><span class="icon">${b.icon}</span><br><b>${fr?b.name_fr:b.name_en}</b></span>`).join(""):`<span class="notice">${s.rewardsEmpty}</span>`}</p>
+  <h2>${fr?"Progression par catégorie":"Progress by category"}</h2>${state.data.categories.map(c=>{const p=pr[c.id]||{stars:0,best:0,completed:0};return `<div class="bar-row"><span>${c.icon} ${nameOf(c)}</span><div class="progress"><i style="width:${Math.min(100,p.stars*20)}%"></i></div><span>⭐${p.stars}</span></div><small>Best: ${p.best} • ${p.completed}x</small>`}).join("")}</main>`+copyrightFooter();
+}
 function parentView(){
   if(sessionStorage.getItem("mm_parent")!=="1"){
     return header()+`<main class="wrap"><div class="form-card" style="margin:30px auto"><h2>👨‍👩‍👧 ${t().parents}</h2><p>Enter Parent PIN (default: 1234 - change it in Admin Settings)</p><input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button class="btn primary" onclick="checkPin()">OK</button></div></main>`;
   }
-  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1>👨‍👩‍👧 Parent Dashboard</h1><div class="stat-grid"><div class="stat">Total Stars<b>⭐ ${totalStars()}</b></div><div class="stat">Categories Started<b>${Object.keys(state.progress).length}</b></div><div class="stat">Lessons Completed<b>${Object.values(state.progress).reduce((a,p)=>a+(p.completed||0),0)}</b></div></div>
-  <h2>Progress by category</h2>${state.data.categories.map(c=>{const p=state.progress[c.id]||{stars:0,best:0,completed:0};return `<div class="bar-row"><span>${c.icon} ${nameOf(c)}</span><div class="progress"><i style="width:${Math.min(100,p.stars*20)}%"></i></div><span>⭐${p.stars}</span></div><small>Best score: ${p.best} • Completed: ${p.completed}x</small>`}).join("")}
-  <p style="margin-top:22px"><button class="btn coral" onclick="if(confirm('Reset all progress?')){localStorage.removeItem('mm_progress');location.reload()}">Reset Progress</button> <button class="btn" onclick="sessionStorage.removeItem('mm_parent');render()">Lock</button></p></main>`;
+  const s=t(); const fr=state.lang==="fr";
+  const kidForm=(k)=>{
+    const ed=!!k;
+    return `<div class="form-card" style="max-width:760px;margin:14px auto">
+      <h3>${ed?"✏️ "+(fr?"Modifier l'enfant":"Edit child"):"➕ "+s.addKid}</h3>
+      <label>${s.kidName}</label><input id="kid_name" value="${ed?String(k.name).replace(/"/g,"&quot;"):""}" maxlength="40" placeholder="${fr?"Ex: Léa":"e.g. Léa"}">
+      <label>${s.kidAge}</label><select id="kid_age"><option value="3-5" ${ed&&k.age_group==="3-5"?"selected":""}>3-5</option><option value="6-8" ${ed&&k.age_group==="6-8"?"selected":""}>6-8</option></select>
+      <label>${s.kidAvatar}</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px">${KID_AVATARS.map((a,i)=>`<label style="font-size:26px;cursor:pointer;border:2px solid ${ed?(k.avatar===a?"#6C5CE7":"#eee"):(i===0?"#6C5CE7":"#eee")};border-radius:12px;padding:6px 10px"><input type="radio" name="kid_av" value="${a}" ${ed?(k.avatar===a?"checked":(i===0&&!k.avatar?"checked":"")):(i===0?"checked":"")} style="display:none">${a}</label>`).join("")}</div>
+      <button class="btn primary" onclick="${ed?"updateKid()":"addKid()"}">${ed?(fr?"Enregistrer":"Save"):s.addKid}</button>
+      ${ed?`<button class="btn" onclick="cancelEditKid()">${fr?"Annuler":"Cancel"}</button>`:""}
+    </div>`;
+  };
+  const kidsHtml=state.kids.length? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${state.kids.map(k=>{
+      const pr=kidProgressOf(k.id); const stars=starsOfProgress(pr); const active=String(k.id)===String(state.activeKid);
+      return `<div class="card" style="text-align:center;${active?"border:3px solid #6C5CE7;":""}">
+        <div class="icon">${k.avatar||"🦉"}</div><h3>${k.name}</h3>
+        <small>${k.age_group||"3-5"} ${fr?"ans":"years old"}${active?" • 🟢 "+s.playingAs:""}</small>
+        <p style="font-size:22px;font-weight:900;margin:8px 0">⭐ ${stars}</p>
+        <p style="font-size:13px;color:#666">${Object.keys(pr).length} ${fr?"catégories":"categories"}</p>
+        <p style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+          <a class="btn teal" href="#/kid/${k.id}" style="font-size:13px">${s.viewProfile}</a>
+          ${active?"":`<button class="btn primary" style="font-size:13px" onclick="setActiveKid('${k.id}')">${s.switchKid}</button>`}
+          <button class="btn" style="font-size:13px" onclick="editKid('${k.id}')">✏️</button>
+          <button class="btn coral" style="font-size:13px" onclick="deleteKid('${k.id}')">🗑️</button>
+        </p></div>`;
+    }).join("")}</div>`:`<div class="notice" style="max-width:760px;margin:10px auto">👋 ${s.noKids}</div>`;
+  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1>👨‍👩‍👧 ${fr?"Tableau de bord parents":"Parent Dashboard"}</h1>
+  ${!sb?`<div class="notice">🟡 ${fr?"Mode démo : les enfants sont gardés sur cet appareil. Connectez Supabase pour les synchroniser.":"Demo mode: kids are kept on this device. Connect Supabase to sync them."}</div>`:(state.user?`<div class="notice">🟢 ${fr?"Profils enfants synchronisés avec votre compte.":"Kid profiles synced with your account."}</div>`:`<div class="notice">🔑 ${fr?"Connectez-vous pour synchroniser les profils enfants avec votre compte.":"Log in to sync kid profiles with your account."}</div>`)}
+  <h2>🧒 ${s.myKids} (${state.kids.length})</h2>${kidsHtml}
+  ${state.editKidId?kidForm(state.kids.find(k=>String(k.id)===String(state.editKidId))):kidForm(null)}
+  <h2>📊 ${fr?"Statistiques":"Statistics"} — ${activeKidObj()?activeKidObj().avatar+" "+activeKidObj().name:"🦉 "+s.guest}</h2>
+  <div class="stat-grid"><div class="stat">${fr?"Étoiles":"Stars"}<b>⭐ ${totalStars()}</b></div><div class="stat">${fr?"Toutes les étoiles":"All stars"}<b>⭐ ${allStars()}</b></div><div class="stat">${fr?"Catégories commencées":"Categories started"}<b>${Object.keys(state.progress).length}</b></div><div class="stat">${fr?"Leçons terminées":"Lessons completed"}<b>${Object.values(state.progress).reduce((a,p)=>a+(p.completed||0),0)}</b></div></div>
+  <h2>${fr?"Progression par catégorie":"Progress by category"}</h2>${state.data.categories.map(c=>{const p=state.progress[c.id]||{stars:0,best:0,completed:0};return `<div class="bar-row"><span>${c.icon} ${nameOf(c)}</span><div class="progress"><i style="width:${Math.min(100,p.stars*20)}%"></i></div><span>⭐${p.stars}</span></div><small>Best score: ${p.best} • Completed: ${p.completed}x</small>`}).join("")}
+  <p style="margin-top:22px"><button class="btn coral" onclick="if(confirm('${fr?"Réinitialiser la progression de ce profil ?":"Reset progress for this profile?"}')){const k=state.activeKid; state.allProgress[k]={}; state.progress=state.allProgress[k]; persistProgress(); render()}">${fr?"Réinitialiser ce profil":"Reset this profile"}</button> <button class="btn" onclick="sessionStorage.removeItem('mm_parent');render()">${fr?"Verrouiller":"Lock"}</button></p></main>`;
 }
 window.checkPin=()=>{ if($("#pin").value===String(state.settings.parentPin)){sessionStorage.setItem("mm_parent","1");render();} else toast("Wrong PIN"); };
 
@@ -572,6 +691,7 @@ window.saveSettings=()=>{ state.settings={...state.settings,appName:$("#s_name")
 
 function render(){
   const hash=location.hash||"#/"; const parts=hash.replace("#/","").split("/");
+  if(!state.data){ $("#app").innerHTML=`<main class="wrap"><p style="text-align:center;font-size:22px;padding:70px 10px">⏳ ${state.lang==="fr"?"Chargement…":"Loading…"}</p></main>`; return; }
   let html="";
   if(parts[0]==="admin"){
     if(!state.admin) html=adminLoginView();
@@ -598,6 +718,7 @@ function render(){
   else if(parts[0]==="videos") html=videosView();
   else if(parts[0]==="rewards") html=rewardsView();
   else if(parts[0]==="parent") html=parentView();
+  else if(parts[0]==="kid") html=kidProfileView(parts[1]);
   else if(parts[0]==="app") html=homeView();
   else html=landingView();
   $("#app").innerHTML=html; window.scrollTo(0,0);
@@ -622,5 +743,5 @@ async function saveMonetizationToSupabase(){
   }catch(e){ toast("Saved locally. Supabase app_settings: "+e.message); return false; }
 }
 (async()=>{ await initSupabase();
-  if(sb){ try{ const {data}=await sb.auth.getSession(); if(data && data.session && data.session.user){ state.user={id:data.session.user.id,email:data.session.user.email}; LS.set("mm_session",state.user); await checkPremiumSubscription(); } sb.auth.onAuthStateChange((event,session)=>{ state.user=session&&session.user?{id:session.user.id,email:session.user.email}:null; LS.set("mm_session",state.user); }); }catch(e){} }
-  await loadRemoteSettings(); await loadData(); render(); })();
+  if(sb){ try{ const {data}=await sb.auth.getSession(); if(data && data.session && data.session.user){ state.user={id:data.session.user.id,email:data.session.user.email}; LS.set("mm_session",state.user); await checkPremiumSubscription(); } sb.auth.onAuthStateChange((event,session)=>{ state.user=session&&session.user?{id:session.user.id,email:session.user.email}:null; LS.set("mm_session",state.user); loadKids().then(()=>render()); }); }catch(e){} }
+  await loadRemoteSettings(); await loadData(); await loadKids(); render(); })();
