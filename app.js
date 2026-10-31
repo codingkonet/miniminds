@@ -471,7 +471,37 @@ window.saveItem=async(type,id)=>{
   try{ await dbSave(type,obj,isNew); toast("Saved"); location.hash="#/admin/"+type; render(); }catch(e){ toast("Error: "+e.message); }
 };
 
-function adminUsers(){ return adminShell(`<h1>Users</h1><div class="notice">${sb?"Live users come from Supabase tables: profiles + kid_profiles.":"Demo Mode: kid progress is stored on this device. Connect Supabase to see registered parents/kids."}</div><table><thead><tr><th>Type</th><th>Name / Email</th><th>Detail</th></tr></thead><tbody><tr><td>Admin</td><td>${state.admin.email}</td><td>Full access</td></tr><tr><td>Kid (this device)</td><td>Guest Kid</td><td>⭐ ${totalStars()} stars • ${Object.keys(state.progress).length} categories started</td></tr></tbody></table><h2>Badges</h2><p><a class="btn primary" href="#" onclick="addBadge();return false">+ Add Badge</a></p>${state.data.badges.map(b=>`<span class="badge"><span class="icon">${b.icon}</span><br><b>${b.name_en} / ${b.name_fr}</b><br><small>${b.condition||""}</small><br><a href="#" onclick="delItem('badges','${b.id}');return false">Delete</a></span>`).join("")}`,"#/admin/users"); }
+function adminUsers(){
+  return adminShell(`<h1>Users</h1>
+  <div class="notice">${sb?"🟢 Live list from Supabase (tables <b>profiles</b> + <b>kid_profiles</b>), loaded with your admin session. New sign-ups appear here instantly.":"🟡 Demo Mode: kid progress is stored on this device. Connect Supabase (supabase-config.js + schema.sql) to see registered parents/kids."}</div>
+  <p><input id="user_search" placeholder="🔍 Search email or kid name…" oninput="filterUsers()" style="max-width:320px"> <button class="btn" onclick="loadAdminUsers()">🔄 Refresh</button> <span id="users_count" style="font-weight:800"></span></p>
+  <table><thead><tr><th>Type</th><th>Email</th><th>Kids</th><th>Joined</th></tr></thead><tbody id="users_body"><tr><td colspan="4">Loading…</td></tr></tbody></table>
+  <h2>Badges</h2><p><a class="btn primary" href="#" onclick="addBadge();return false">+ Add Badge</a></p>${state.data.badges.map(b=>`<span class="badge"><span class="icon">${b.icon}</span><br><b>${b.name_en} / ${b.name_fr}</b><br><small>${b.condition||""}</small><br><a href="#" onclick="delItem('badges','${b.id}');return false">Delete</a></span>`).join("")}`,"#/admin/users"); }
+window.loadAdminUsers=async()=>{
+  const body=$("#users_body"); if(!body) return;
+  if(!sb){ body.innerHTML=`<tr><td>Admin</td><td>${state.admin.email}</td><td>—</td><td>—</td></tr><tr><td>Kid (this device)</td><td>Guest Kid</td><td>⭐ ${totalStars()} stars • ${Object.keys(state.progress).length} categories started</td><td>—</td></tr>`; $("#users_count").textContent=""; return; }
+  body.innerHTML=`<tr><td colspan="4">Loading…</td></tr>`;
+  try{
+    const [pr,kd]=await Promise.all([
+      sb.from("profiles").select("id,email,role,created_at").order("created_at",{ascending:false}),
+      sb.from("kid_profiles").select("id,parent_id,name,age_group,avatar,created_at")
+    ]);
+    if(pr.error) throw pr.error;
+    const profiles=pr.data||[], kids=kd.data||[];
+    const byParent={}; kids.forEach(k=>{ (byParent[k.parent_id]=byParent[k.parent_id]||[]).push(k); });
+    $("#users_count").textContent=`— ${profiles.length} account(s) • ${kids.length} kid profile(s)`;
+    if(!profiles.length){ body.innerHTML=`<tr><td colspan="4">No accounts yet. Sign-ups appear here instantly.</td></tr>`; return; }
+    body.innerHTML=profiles.map(p=>{
+      const ks=byParent[p.id]||[];
+      return `<tr data-search="${(p.email||"").toLowerCase()} ${ks.map(k=>(k.name||"").toLowerCase()).join(" ")}">
+        <td>${p.role==="admin"?`<span class="badge">🛡️ Admin</span>`:"👤 Parent"}</td>
+        <td><b>${p.email||"—"}</b></td>
+        <td>${ks.length?ks.map(k=>`${k.avatar||"🧒"} <b>${k.name}</b> <small>(${k.age_group||"?"})</small>`).join("<br>"):"—"}</td>
+        <td><small>${p.created_at?new Date(p.created_at).toLocaleDateString():"—"}</small></td></tr>`;
+    }).join("");
+  }catch(e){ body.innerHTML=`<tr><td colspan="4" style="color:#c0392b;font-weight:700">Could not load users: ${e.message||e}</td></tr>`; }
+};
+window.filterUsers=()=>{ const q=($("#user_search")?.value||"").toLowerCase(); document.querySelectorAll("#users_body tr[data-search]").forEach(tr=>{ tr.style.display=(!q||tr.getAttribute("data-search").includes(q))?"":"none"; }); };
 window.addBadge=async()=>{ const name=prompt("Badge name EN?"); if(!name)return; const obj={id:"badge"+Date.now(),name_en:name,name_fr:prompt("Badge name FR?",name)||name,icon:prompt("Icon emoji?","🏅")||"🏅",condition:prompt("Condition?","")||""}; try{ if(sb){delete obj.id; await dbSave("badges",obj,true);} else {state.data.badges.push(obj); persistContent();} render(); }catch(e){toast(e.message)} };
 function adminMonetization(){
   const m = monetization(); const a=m.ads, pay=m.payments;
@@ -571,6 +601,7 @@ function render(){
   else if(parts[0]==="app") html=homeView();
   else html=landingView();
   $("#app").innerHTML=html; window.scrollTo(0,0);
+  if(parts[0]==="admin"&&parts[1]==="users"&&state.admin) window.loadAdminUsers();
 }
 window.addEventListener("hashchange",render);
 async function loadRemoteSettings(){
