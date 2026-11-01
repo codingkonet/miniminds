@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MiniMINDS - Kids French & English Learning</title>
 <meta name="description" content="MiniMINDS: bilingual French/English learning app for kids 3-8. Flashcards, quizzes, matching games, stories and songs.">
+<meta name="theme-color" content="#6C5CE7">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -16,5 +19,13 @@
 <script src="supabase-config.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script>
+// Register PWA service worker (only on http/https, not file:// in the Android WebView)
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("service-worker.js").catch(function () {});
+  });
+}
+</script>
 </body>
 </html>

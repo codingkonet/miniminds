@@ -349,6 +349,10 @@ function categoryView(id){
     ${w.letter?`<div style="font-size:52px;font-weight:900;color:${cat.color}">${w.letter}</div>`:""}
     <h2>${w.word_en}</h2><button class="speak" onclick="speak('${w.word_en.replace(/'/g,"\\'")}','en')">🔊 English</button>
     <h3>${w.word_fr}</h3><button class="speak" onclick="speak('${w.word_fr.replace(/'/g,"\\'")}','fr')">🔊 Français</button>
+    <div id="mic-box" style="margin-top:10px">
+      <button class="btn" id="mic-btn" onclick="pronounceWord(this,'${id}','${(w.word_en||"").replace(/'/g,"\\'")}','${(w.word_fr||"").replace(/'/g,"\\'")}')">🎤 ${s.sayIt}</button>
+      <div id="mic-msg" style="font-weight:800;min-height:22px;margin-top:6px"></div>
+    </div>
     <div style="margin-top:16px"><button class="btn primary" onclick="nextFlash(${words.length})">${s.next} ➜</button></div>
     <small>${(state.flashIdx%words.length)+1} / ${words.length}</small></div>`:`<div class="notice">No words yet. Add them in Admin.</div>`;
   } else if(state.tab==="quiz"){ body=quizView(cat,words); }
@@ -362,6 +366,49 @@ function categoryView(id){
 window.setTab=t=>{state.tab=t;render()};
 window.nextFlash=n=>{state.flashIdx=(state.flashIdx+1)%n;render()};
 window.speak=speak;
+
+// ---------- Pronunciation practice (Web Speech API) ----------
+function normWord(s){
+  return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z ]/g,"").trim();
+}
+function levSim(a,b){
+  // similarity 0..1 via Levenshtein distance
+  if(!a||!b) return 0;
+  const m=a.length,n=b.length;
+  const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++) d[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return 1 - d[m][n]/Math.max(m,n);
+}
+window.pronounceWord=(btn,catId,en,fr)=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const msg=document.getElementById("mic-msg");
+  const target=state.lang==="en"?en:fr;
+  const lang=state.lang==="en"?"en-US":"fr-FR";
+  if(!SR){ if(msg){msg.textContent=t().micUnsupported;msg.style.color="#888";} return; }
+  const rec=new SR();
+  rec.lang=lang; rec.interimResults=false; rec.maxAlternatives=5; rec.continuous=false;
+  btn.disabled=true; msg.style.color="#555"; msg.textContent="🎤 "+t().micListening;
+  rec.onresult=e=>{
+    const alts=Array.from(e.results[0]).map(r=>r.transcript);
+    const targetN=normWord(target);
+    let best=0;
+    alts.forEach(a=>{ best=Math.max(best, levSim(targetN,normWord(a))); });
+    if(best>=0.7){
+      msg.style.color="#2E9E5B"; msg.textContent="✅ "+t().micGood;
+      // award one star per word on first successful pronunciation
+      if(catId){ const p=state.progress[catId]||{stars:0,best:0,completed:0,words:{}}; p.words=p.words||{}; if(!p.words[en]){ p.words[en]=true; saveProgress(catId,p.stars+1,100);} }
+      toast("🎤 "+t().micGood+" ⭐");
+    } else {
+      msg.style.color="#E8603C"; msg.textContent="🔁 "+t().micMiss+" “"+target+"”";
+    }
+    btn.disabled=false;
+  };
+  rec.onerror=ev=>{ btn.disabled=false; msg.style.color="#888"; msg.textContent=ev.error==="not-allowed"?t().micUnsupported:"🎤 "+t().micListening+"…"; };
+  rec.onend=()=>{ btn.disabled=false; };
+  try{ rec.start(); }catch(err){ btn.disabled=false; }
+};
 
 function quizView(cat,words){
   if(!state.quiz||state.quiz.cat!==cat.id) startQuiz(cat.id,true);
@@ -505,9 +552,73 @@ function tableView(type){
   if(type==="stories"){ cols="<th>Title EN</th><th>Title FR</th><th>Age</th><th></th>"; rows=d.stories.map(s=>`<tr><td>${s.image_url?`<img src="${s.image_url}" alt="" class="thumb"> `:""}${s.title_en}</td><td>${s.title_fr}</td><td>${s.age_group}</td><td><a href="#/admin/edit/stories/${s.id}">Edit</a> • <a href="#" onclick="delItem('stories','${s.id}');return false">Delete</a></td></tr>`).join(""); }
   if(type==="songs"){ cols="<th>Title EN</th><th>Title FR</th><th></th>"; rows=d.songs.map(s=>`<tr><td>${s.image_url?`<img src="${s.image_url}" alt="" class="thumb"> `:""}${s.title_en}</td><td>${s.title_fr}</td><td><a href="#/admin/edit/songs/${s.id}">Edit</a> • <a href="#" onclick="delItem('songs','${s.id}');return false">Delete</a></td></tr>`).join(""); }
   if(type==="videos"){ cols="<th>Thumb</th><th>Title EN</th><th>Title FR</th><th>YouTube</th><th></th>"; rows=videoList().map(v=>{const yid=ytId(v.youtube_url); return `<tr><td>${yid?`<img src="https://i.ytimg.com/vi/${yid}/default.jpg" alt="" class="thumb">`:"🎬"}</td><td>${v.title_en}</td><td>${v.title_fr}</td><td>${v.is_active!==false?"Yes":"No"}</td><td><a href="#/admin/edit/videos/${v.id}">Edit</a> • <a href="#" onclick="delItem('videos','${v.id}');return false">Delete</a></td></tr>`;}).join(""); }
-  return adminShell(`<h1 style="text-transform:capitalize">${type}</h1><p><a class="btn primary" href="#/admin/edit/${type}/new">+ Add ${type.slice(0,-1)}</a> <input id="q" placeholder="Search..." oninput="filterTable(this.value)" style="max-width:260px;display:inline-block"></p><table id="tbl"><thead><tr>${cols}</tr></thead><tbody>${rows}</tbody></table>`,"#/admin/"+type);
+  let importHtml="";
+  if(type==="vocabulary"){
+    importHtml=`<div class="notice" style="margin:12px 0">
+      <b>📥 Import CSV</b> — <small>colonnes: <code>category_id, word_en, word_fr, icon (emoji), color</code> (une ligne = un mot). <code>category_id</code> peut être l'id ou le nom EN/FR. <code>icon</code> et <code>color</code> optionnels.</small>
+      <div style="margin-top:8px"><input type="file" id="csv_file" accept=".csv,text/csv"><button class="btn teal" onclick="importVocabCsv()">Upload & import</button> <button class="btn" onclick="downloadCsvTemplate()">⬇ Modèle CSV</button></div>
+      <div id="csv_result" style="margin-top:6px;font-weight:800"></div>
+    </div>`;
+  }
+  return adminShell(importHtml+`<h1 style="text-transform:capitalize">${type}</h1><p><a class="btn primary" href="#/admin/edit/${type}/new">+ Add ${type.slice(0,-1)}</a> <input id="q" placeholder="Search..." oninput="filterTable(this.value)" style="max-width:260px;display:inline-block"></p><table id="tbl"><thead><tr>${cols}</tr></thead><tbody>${rows}</tbody></table>`,"#/admin/"+type);
 }
 window.filterTable=q=>{ document.querySelectorAll("#tbl tbody tr").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?"":"none"); };
+
+// ---------- CSV import (admin vocabulary) ----------
+function parseCsvLine(line){
+  const out=[]; let cur=""; let q=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else { if(c==='"') q=true; else if(c===","){ out.push(cur); cur=""; } else cur+=c; }
+  }
+  out.push(cur); return out.map(s=>s.trim());
+}
+function normKey(s){ return (s||"").toLowerCase().replace(/[^a-z]/g,""); }
+window.importVocabCsv=async()=>{
+  const inp=$("#csv_file"); const res=$("#csv_result");
+  const file=inp&&inp.files&&inp.files[0];
+  const say=(m,c)=>{ if(res){ res.innerHTML=m; res.style.color=c||"#333"; } };
+  if(!file){ say("⚠️ Choose a CSV file first.","#E8603C"); return; }
+  const text=await file.text();
+  const lines=text.split(/\r?\n/).filter(l=>l.trim()!=="");
+  if(lines.length<2){ say("⚠️ CSV needs a header + at least one word row.","#E8603C"); return; }
+  const header=parseCsvLine(lines[0]).map(normKey);
+  const col=n=>header.findIndex(h=>h===n||h===normKey(n));
+  const iCat=col("category_id"), iEn=col("word_en"), iFr=col("word_fr"), iIcon=col("icon"), iColor=col("color");
+  if(iEn<0||iFr<0){ say("⚠️ Missing word_en / word_fr columns in header.","#E8603C"); return; }
+  const rows=[]; const skipped=[];
+  for(let r=1;r<lines.length;r++){
+    const c=parseCsvLine(lines[r]);
+    const en=(c[iEn]||"").trim(), fr=(c[iFr]||"").trim();
+    if(!en||!fr){ skipped.push("row "+(r+1)+" (empty word)"); continue; }
+    let catId=iCat>=0?(c[iCat]||"").trim():"";
+    if(catId){
+      const byId=state.data.categories.find(k=>String(k.id)===catId);
+      const byName=state.data.categories.find(k=>normKey(k.name_en)===normKey(catId)||normKey(k.name_fr)===normKey(catId));
+      if(byId||byName){ catId=byId?byId.id:byName.id; }
+      else { skipped.push(en+" (unknown category '"+catId+"')"); continue; }
+    } else {
+      const first=state.data.categories[0]; catId=first?first.id:"";
+    }
+    if(!catId){ skipped.push(en+" (no category)"); continue; }
+    rows.push({ category_id:catId, word_en:en, word_fr:fr, icon:(iIcon>=0&&c[iIcon]?c[iIcon].trim():"")||"🅰️", color:(iColor>=0&&c[iColor]?c[iColor].trim():null), sort_order:state.data.vocabulary.length+rows.length+1, is_active:true });
+  }
+  if(!rows.length){ say("⚠️ No valid rows to import.<br><small>Skipped: "+skipped.join(" • ")+"</small>","#E8603C"); return; }
+  if(sb){
+    const {error}=await sb.from("vocabulary").insert(rows);
+    if(error){ say("❌ Supabase: "+error.message,"#E8603C"); return; }
+  } else {
+    rows.forEach((row,i)=>{ row.id="v_"+Date.now()+"_"+i; state.data.vocabulary.push(row); });
+    persistContent&&persistContent();
+  }
+  say("✅ Imported <b>"+rows.length+"</b> word(s)."+(skipped.length?"<br><small>Skipped: "+skipped.join(" • ")+"</small>":"")+" <a href='#/admin/vocabulary' onclick='location.reload()'>Refresh list</a>","#2E9E5B");
+};
+window.downloadCsvTemplate=()=>{
+  const csv="category_id,word_en,word_fr,icon,color\nanimals,Cat,Chat,🐱,\nanimals,Dog,Chien,🐶,\ncolors,Red,Rouge,🔴,red\n";
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="miniminds-vocab-template.csv"; a.click(); URL.revokeObjectURL(a.href);
+};
 
 function dataURLtoBlob(d){ const p=d.split(","), bin=atob(p[1]), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:"image/jpeg"}); }
 function picField(label,val){

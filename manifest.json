@@ -1,0 +1,35 @@
+{
+  "name": "MiniMINDS - Kids French & English Learning",
+  "short_name": "MiniMINDS",
+  "description": "Bilingual French/English learning app for kids 3-8. Flashcards, quizzes, matching games, stories and songs.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "miniminds",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F9FC",
+  "theme_color": "#6C5CE7",
+  "categories": ["education", "kids", "language"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
