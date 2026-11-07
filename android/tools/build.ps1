@@ -1,4 +1,4 @@
-# Build MiniMINDS Android (APK + AAB)
+# Build TooKKIDS Android (APK + AAB)
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File tools\build.ps1           # debug APK + AAB
 #   $env:KEYSTORE_PASS='...'; $env:KEY_PASS='...'
@@ -68,11 +68,11 @@ if ($LASTEXITCODE -ne 0) { throw "Gradle build failed." }
 $dist = Join-Path (Split-Path -Parent $root) 'dist-android'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 if ($Release) {
-    Copy-Item (Join-Path $root 'app\build\outputs\apk\release\app-release.apk') (Join-Path $dist 'MiniMINDS.apk') -Force
-    Copy-Item (Join-Path $root 'app\build\outputs\bundle\release\app-release.aab') (Join-Path $dist 'MiniMINDS.aab') -Force
+    Copy-Item (Join-Path $root 'app\build\outputs\apk\release\app-release.apk') (Join-Path $dist 'TooKKIDS.apk') -Force
+    Copy-Item (Join-Path $root 'app\build\outputs\bundle\release\app-release.aab') (Join-Path $dist 'TooKKIDS.aab') -Force
 } else {
-    Copy-Item (Join-Path $root 'app\build\outputs\apk\debug\app-debug.apk') (Join-Path $dist 'MiniMINDS-debug.apk') -Force
-    Copy-Item (Join-Path $root 'app\build\outputs\bundle\debug\app-debug.aab') (Join-Path $dist 'MiniMINDS-debug.aab') -Force
+    Copy-Item (Join-Path $root 'app\build\outputs\apk\debug\app-debug.apk') (Join-Path $dist 'TooKKIDS-debug.apk') -Force
+    Copy-Item (Join-Path $root 'app\build\outputs\bundle\debug\app-debug.aab') (Join-Path $dist 'TooKKIDS-debug.aab') -Force
 }
 Write-Host "OK: $dist"
 Get-ChildItem $dist | Select-Object Name, Length

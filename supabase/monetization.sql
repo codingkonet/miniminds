@@ -1,4 +1,4 @@
--- MiniMINDS monetization (optional full tables - the app works without them)
+-- TooKKIDS monetization (optional full tables - the app works without them)
 -- The app stores the live monetization config as JSON in app_settings(key='monetization'),
 -- editable in Admin > Monetization. These tables are for real subscription records
 -- when you add payment webhooks (PayPal IPN / Stripe) via a Supabase Edge Function.

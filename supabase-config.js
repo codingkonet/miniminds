@@ -1,4 +1,4 @@
-// MiniMINDS - Supabase connection
+// TooKKIDS - Supabase connection
 // Project: ofqgfenkuiujuhxqmpsp (URL derived from the anon key ref and verified live)
 // Tables are created by running supabase/schema.sql in Supabase SQL Editor.
 window.MINIMINDS_SUPABASE = {

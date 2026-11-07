@@ -27,7 +27,7 @@ public class MainActivityTest {
             controller.setup();
             MainActivity activity = controller.get();
             assertNotNull(activity);
-            assertEquals("MiniMINDS", activity.getTitle() == null ? "MiniMINDS" : "MiniMINDS");
+            assertEquals("TooKKIDS", activity.getTitle() == null ? "TooKKIDS" : "TooKKIDS");
             ViewGroup content = activity.findViewById(android.R.id.content);
             assertTrue(content.getChildCount() > 0);
             assertTrue(content.getChildAt(0) instanceof WebView);

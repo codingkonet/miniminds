@@ -1,4 +1,4 @@
-// MiniMINDS app - kids site + parent dashboard + admin panel (Supabase-ready)
+// TooKKIDS app - kids site + parent dashboard + admin panel (Supabase-ready)
 const $ = s => document.querySelector(s);
 const LS = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)) };
 let sb = null, source = "demo";
@@ -40,10 +40,12 @@ function adSlot(place){
   if(place==="app" && !ads.showInApp) return "";
   if(ads.code) return `<div class="ad-slot"><small>${ads.label}</small><div>${ads.code}</div></div>`;
   if(ads.imageUrl) return `<div class="ad-slot"><small>${ads.label}</small><a href="${ads.linkUrl||"#/app"}" target="_blank" rel="sponsored noopener"><img src="${ads.imageUrl}" alt="${ads.label}" style="max-width:100%;border-radius:12px"></a></div>`;
-  if(hasPaidPlan()) return `<div class="ad-slot"><small>${ads.label}</small><a href="#/pricing" style="font-size:20px;font-weight:900">⭐ MiniMINDS Premium - ${state.lang==="fr"?"Sans publicité, tout débloqué":"No ads, everything unlocked"} →</a></div>`;
+  if(hasPaidPlan()) return `<div class="ad-slot"><small>${ads.label}</small><a href="#/pricing" style="font-size:20px;font-weight:900">⭐ TooKKIDS Premium - ${state.lang==="fr"?"Sans publicité, tout débloqué":"No ads, everything unlocked"} →</a></div>`;
   return `<div class="ad-slot"><small>${ads.label}</small></div>`;
 }
-let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, allProgress: LS.get("mm_all_progress", null) || {"_guest": LS.get("mm_progress",{})}, activeKid: String(LS.get("mm_active_kid","_guest")), kids: LS.get("mm_kids",[]), progress: {}, editKidId:null, settings: LS.get("mm_settings",{appName:"MiniMINDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), user: LS.get("mm_session",null), authMsg:"", tab:"flash", flashIdx:0, quiz:null, match:null };
+let state = { lang: LS.get("mm_lang","en"), age: LS.get("mm_age","all"), data:null, allProgress: LS.get("mm_all_progress", null) || {"_guest": LS.get("mm_progress",{})}, activeKid: String(LS.get("mm_active_kid","_guest")), kids: LS.get("mm_kids",[]), progress: {}, editKidId:null, settings: LS.get("mm_settings",{appName:"TooKKIDS",parentPin:"1234",maintenance:false}), admin: LS.get("mm_admin",null), user: LS.get("mm_session",null), authMsg:"", tab:"flash", flashIdx:0, quiz:null, match:null };
+// Migrate devices that still carry the old app name in their stored settings
+if(state.settings.appName==="MiniMINDS") state.settings.appName="TooKKIDS";
 if(!state.allProgress[state.activeKid]) state.allProgress[state.activeKid]={};
 state.progress = state.allProgress[state.activeKid];
 function persistProgress(){ LS.set("mm_all_progress",state.allProgress); LS.set("mm_progress",state.allProgress._guest||{}); }
@@ -161,7 +163,7 @@ function persistContent(){ if(!sb) LS.set("mm_content", state.data); }
 
 function header(){
   const s=t();
-  return `<header class="topbar"><a class="brand" href="#/app"><span class="logo">🦉</span><span><strong>Mini<span>MINDS</span></strong><small>${s.tagline}</small></span></a>
+  return `<header class="topbar"><a class="brand" href="#/app"><span class="logo">🦉</span><span><strong>Too<span>KKIDS</span></strong><small>${s.tagline}</small></span></a>
   <div class="controls">
     <button class="pill ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN English</button>
     <button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR Français</button>
@@ -176,9 +178,9 @@ window.setAge = a=>{ state.age=a; LS.set("mm_age",a); render(); };
 
 function copyrightFooter(){
   const year = new Date().getFullYear();
-  return `<footer class="site-footer"><div class="wrap" style="padding-bottom:20px"><strong>MiniMINDS</strong> - ${t().tagline}<br>
+  return `<footer class="site-footer"><div class="wrap" style="padding-bottom:20px"><strong>TooKKIDS</strong> - ${t().tagline}<br>
   <a href="#/app">${t().learn}</a> • <a href="#/stories">${t().stories}</a> • <a href="#/songs">${t().songs}</a> • <a href="#/videos">${t().videos}</a> • <a href="#/parent">${t().parents}</a><br>
-  <small><span onclick="footSecret()" style="cursor:default">© ${year} MiniMINDS.</span> ${state.lang==="fr"?"Tous droits réservés.":"All rights reserved."} • ${state.lang==="fr"?"Sans publicité • Sûr pour les enfants":"No ads • Safe for kids"}</small></div></footer>`;
+  <small><span onclick="footSecret()" style="cursor:default">© ${year} TooKKIDS.</span> ${state.lang==="fr"?"Tous droits réservés.":"All rights reserved."} • ${state.lang==="fr"?"Sans publicité • Sûr pour les enfants":"No ads • Safe for kids"}</small></div></footer>`;
 }
 // Hidden admin access (no public link): triple-click the © line in the footer,
 // or open the #/admin URL directly.
@@ -241,7 +243,7 @@ function planCards(){
 }
 function pricingView(){
   const fr=state.lang==="fr"; const paid=hasPaidPlan();
-  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1 style="text-align:center">⭐ ${fr?"Tarifs MiniMINDS":"MiniMINDS Pricing"}</h1>
+  return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1 style="text-align:center">⭐ ${fr?"Tarifs TooKKIDS":"TooKKIDS Pricing"}</h1>
   ${paid?`<p style="text-align:center;font-weight:700">${fr?"Commencez gratuitement. Passez Premium pour tout débloquer, sans publicité.":"Start free. Go Premium to unlock everything, with no ads."}</p>`:`<div class="notice" style="text-align:center;font-size:18px">🎉 ${fr?"Tout est entièrement gratuit ! Bonne découverte.":"Everything is completely free! Enjoy."}</div>`}
   ${planCards()}${paid?`<p style="text-align:center"><small>${fr?"Paiement sécurisé via les moyens activés par l'administrateur (PayPal, carte, virement...).":"Secure payment via the methods enabled by the admin (PayPal, card, bank transfer...)."}</small></p>`:""}</main>`+copyrightFooter();
 }
@@ -280,17 +282,17 @@ function landingView(){
     ["👨‍👩‍👧","Parent dashboard","Follow progress from a PIN-protected parent area."],
     ["🛡️","Safe, no ads","No ads, no chat, and no external links for kids."]
   ];
-  return `<header class="topbar"><a class="brand" href="#/"><span class="logo">🦉</span><span><strong>Mini<span>MINDS</span></strong><small>${t().tagline}</small></span></a>
+  return `<header class="topbar"><a class="brand" href="#/"><span class="logo">🦉</span><span><strong>Too<span>KKIDS</span></strong><small>${t().tagline}</small></span></a>
   <div class="controls"><button class="pill" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">${fr?"Fonctionnalités":"Features"}</button><button class="pill" onclick="document.getElementById('categories').scrollIntoView({behavior:'smooth'})">${fr?"Catégories":"Categories"}</button><a class="pill" href="#/parent">${t().parents}</a>
   <button class="pill ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button><button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR</button>
   ${hasPaidPlan()?`<a class="pill" href="#/pricing">⭐ ${fr?"Tarifs":"Pricing"}</a>`:""}
-  <a class="btn teal" href="MiniMINDS.apk" download="MiniMINDS.apk">⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
+  <a class="btn teal" href="TooKKIDS.apk" download="TooKKIDS.apk">⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
   ${authButtons()}
   <a class="btn primary" href="#/app">${fr?"Commencer":"Start Learning"}</a></div></header>
   <main>
   <section class="landing-hero"><div class="mascot">🦉</div>
     <h1>${fr?"Apprendre le français et l'anglais en jouant":"Learning French & English through play"}</h1>
-    <p>${fr?"MiniMINDS aide les enfants de 3 à 8 ans à découvrir les mots, les sons et les histoires dans deux langues - avec des jeux, des étoiles et zéro publicité.":"MiniMINDS helps kids aged 3-8 discover words, sounds and stories in two languages - with games, stars and zero ads."}</p>
+    <p>${fr?"TooKKIDS aide les enfants de 3 à 8 ans à découvrir les mots, les sons et les histoires dans deux langues - avec des jeux, des étoiles et zéro publicité.":"TooKKIDS helps kids aged 3-8 discover words, sounds and stories in two languages - with games, stars and zero ads."}</p>
     <p><a class="btn coral" style="font-size:20px" href="#/app">▶ ${fr?"Commencer gratuitement":"Start Learning Free"}</a> <button class="btn sun" onclick="document.getElementById('categories').scrollIntoView({behavior:'smooth'})">${fr?"Voir les catégories":"Explore Categories"}</button></p>
     <div class="stat-grid" style="max-width:760px;margin:22px auto;text-align:center">
       <div class="stat">${fr?"Catégories":"Categories"}<b>${d.categories.length}</b></div>
@@ -299,7 +301,7 @@ function landingView(){
       <div class="stat">${fr?"Âges":"Ages"}<b>3-8</b></div>
     </div></section>
   <div class="wrap">${adSlot("landing")}</div>
-  <section class="wrap" id="features"><h2 style="text-align:center">${fr?"Pourquoi les familles choisissent MiniMINDS":"Why families choose MiniMINDS"}</h2>
+  <section class="wrap" id="features"><h2 style="text-align:center">${fr?"Pourquoi les familles choisissent TooKKIDS":"Why families choose TooKKIDS"}</h2>
     <div class="grid">${features.map(f=>`<div class="card"><div class="icon">${f[0]}</div><h3>${f[1]}</h3><small style="font-size:15px;color:#555">${f[2]}</small></div>`).join("")}</div></section>
   <section class="wrap" id="categories"><h2 style="text-align:center">${fr?"Que vont apprendre les enfants ?":"What will kids learn?"}</h2>
     <div class="grid">${cats.map(c=>`<a class="card" href="#/category/${c.id}"><div class="icon">${c.image_url?`<img src="${c.image_url}" alt="">`:(c.icon||"📚")}</div><h3>${nameOf(c)}</h3><small>${fr?c.name_en:c.name_fr}</small></a>`).join("")}</div></section>
@@ -311,13 +313,13 @@ function landingView(){
     </div></section>
   <section class="cta"><h2>${fr?"Prêt à commencer l'aventure ?":"Ready to start the adventure?"}</h2>
     <p>${fr?"Gratuit, sans inscription pour les enfants, sur téléphone, tablette et ordinateur.":"Free, no signup for kids, on phone, tablet and computer."}</p>
-    <a class="btn primary" style="font-size:20px" href="#/app">▶ ${fr?"Ouvrir MiniMINDS":"Open MiniMINDS"}</a></section>
+    <a class="btn primary" style="font-size:20px" href="#/app">▶ ${fr?"Ouvrir TooKKIDS":"Open TooKKIDS"}</a></section>
   </main>${copyrightFooter()}`;
 }
 
 function homeView(){
   const s=t(); const cats=state.data.categories.filter(c=>c.is_active!==false && (state.age==="all"||c.age_group===state.age||c.age_group==="3-8"));
-  return header()+`<main class="wrap"><section class="hero"><div class="mascot">🦉</div><h1>MiniMINDS</h1><p>${s.tagline}</p>
+  return header()+`<main class="wrap"><section class="hero"><div class="mascot">🦉</div><h1>TooKKIDS</h1><p>${s.tagline}</p>
   <div class="tabs"><button class="pill ${state.age==='all'?'active':''}" onclick="setAge('all')">${s.ageAll}</button>
   <button class="pill ${state.age==='3-5'?'active':''}" onclick="setAge('3-5')">3-5</button>
   <button class="pill ${state.age==='6-8'?'active':''}" onclick="setAge('6-8')">6-8</button>
@@ -530,7 +532,7 @@ window.checkPin=()=>{ if($("#pin").value===String(state.settings.parentPin)){ses
 // ---------- ADMIN ----------
 const ADMIN_DEMO={email:"admin@miniminds.school",password:"demo1234"}; // Offline Demo Mode only. Supabase Mode uses your real Supabase Auth user - never commit real passwords.
 function adminLoginView(err=""){
-  return `<main class="wrap"><div class="form-card" style="margin:40px auto"><div style="font-size:52px">🦉</div><h1>MiniMINDS Admin</h1>
+  return `<main class="wrap"><div class="form-card" style="margin:40px auto"><div style="font-size:52px">🦉</div><h1>TooKKIDS Admin</h1>
   ${source==="demo"?`<div class="notice">Demo Mode - use:<br><b>${ADMIN_DEMO.email}</b> / <b>${ADMIN_DEMO.password}</b><br><small>Configure the backend to use real accounts.</small></div>`:`<div class="notice">Sign in with an administrator account.</div>`}
   ${err?`<p style="color:red;font-weight:800">${err}</p>`:""}
   <label>Email</label><input id="aemail" type="email" value="${source==='demo'?ADMIN_DEMO.email:''}"><label>Password</label><input id="apass" type="password" value="${source==='demo'?ADMIN_DEMO.password:''}">
@@ -546,7 +548,7 @@ window.adminLogout=async()=>{ if(sb) await sb.auth.signOut(); state.admin=null; 
 
 function adminShell(content,active){
   const links=[["#/admin","📊 Dashboard"],["#/admin/categories","🗂️ Categories"],["#/admin/vocabulary","🃏 Vocabulary"],["#/admin/stories","📖 Stories"],["#/admin/songs","🎵 Songs"],["#/admin/videos","🎬 Videos"],["#/admin/users","👥 Users"],["#/admin/badges","🏆 Badges"],["#/admin/monetization","💰 Monetization"],["#/admin/settings","⚙️ Settings"]];
-  return `<div class="admin-layout"><aside class="sidebar"><h2>🦉 MiniMINDS</h2>${links.map(l=>`<a href="${l[0]}" class="${active===l[0]?'active':''}">${l[1]}</a>`).join("")}<a href="#/app">← Kids Site</a><a href="#" onclick="adminLogout();return false">Logout (${state.admin.email})</a><p style="font-size:12px;opacity:.8;padding:8px">Backend: ${sb?"🟢 Supabase connected":"🟡 Demo Mode (localStorage)"}</p></aside><section class="admin-main">${content}</section></div>`;
+  return `<div class="admin-layout"><aside class="sidebar"><h2>🦉 TooKKIDS</h2>${links.map(l=>`<a href="${l[0]}" class="${active===l[0]?'active':''}">${l[1]}</a>`).join("")}<a href="#/app">← Kids Site</a><a href="#" onclick="adminLogout();return false">Logout (${state.admin.email})</a><p style="font-size:12px;opacity:.8;padding:8px">Backend: ${sb?"🟢 Supabase connected":"🟡 Demo Mode (localStorage)"}</p></aside><section class="admin-main">${content}</section></div>`;
 }
 function adminDashboard(){
   const d=state.data;
@@ -629,7 +631,7 @@ window.importVocabCsv=async()=>{
 window.downloadCsvTemplate=()=>{
   const csv="category_id,word_en,word_fr,icon,color\nanimals,Cat,Chat,🐱,\nanimals,Dog,Chien,🐶,\ncolors,Red,Rouge,🔴,red\n";
   const blob=new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="miniminds-vocab-template.csv"; a.click(); URL.revokeObjectURL(a.href);
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="tooKKIDS-vocab-template.csv"; a.click(); URL.revokeObjectURL(a.href);
 };
 
 function dataURLtoBlob(d){ const p=d.split(","), bin=atob(p[1]), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:"image/jpeg"}); }
@@ -771,7 +773,7 @@ function adminMonetization(){
     <label>Ad code (paste AdSense / network HTML-JS code - admin only)</label><textarea id="ad_code" rows="4" placeholder="<script ...>">${String(a.code||"").replace(/</g,"&lt;")}</textarea>
     <label>OR Banner image URL</label><input id="ad_image" value="${String(a.imageUrl||"").replace(/"/g,"&quot;")}">
     <label>Banner link URL</label><input id="ad_link" value="${String(a.linkUrl||"").replace(/"/g,"&quot;")}">
-    <small>If no code/image is set, a MiniMINDS Premium house-ad is shown. Note: ads in kids apps must comply with Google Families / COPPA rules - use only family-friendly ad networks.</small>
+    <small>If no code/image is set, a TooKKIDS Premium house-ad is shown. Note: ads in kids apps must comply with Google Families / COPPA rules - use only family-friendly ad networks.</small>
   </div>
 
   <h2>⭐ Plans (Free / Paid)</h2>${planForms}<p><button class="btn teal" onclick="addPlan()">+ Add Plan</button></p>

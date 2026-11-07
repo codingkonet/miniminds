@@ -3,7 +3,7 @@ frontend:
   phases:
     build:
       commands:
-        - echo "MiniMINDS is a static site - no build step"
+        - echo "TooKKIDS is a static site - no build step"
   artifacts:
     baseDirectory: .
     files:
@@ -12,6 +12,6 @@ frontend:
       - data.js
       - style.css
       - supabase-config.js
-      - MiniMINDS.apk
+      - TooKKIDS.apk
   cache:
     paths: []

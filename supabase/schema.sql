@@ -1,4 +1,4 @@
--- MiniMINDS - Supabase schema (run in Supabase: SQL Editor > New query > Run)
+-- TooKKIDS - Supabase schema (run in Supabase: SQL Editor > New query > Run)
 -- Creates tables, RLS, storage buckets, profile trigger and seed content.
 
 create extension if not exists pgcrypto;

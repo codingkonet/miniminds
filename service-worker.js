@@ -1,9 +1,9 @@
-/* MiniMINDS service worker — PWA offline support
+/* TooKKIDS service worker — PWA offline support
  * Strategy: online-first (network), fall back to cache when offline.
  * Cross-origin Supabase API calls are NOT cached (always fresh / app handles offline itself).
  * Bump CACHE version on every deploy so clients pick up new files.
  */
-const CACHE = "miniminds-v1";
+const CACHE = "toolkkids-v1";
 
 const CORE = [
   "./",

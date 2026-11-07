@@ -1,4 +1,4 @@
-// MiniMINDS seed content - mirrors the Supabase tables in supabase/schema.sql
+// TooKKIDS seed content - mirrors the Supabase tables in supabase/schema.sql
 window.MM_SEED = {
   categories: [
     { id: "alphabet", name_en: "Alphabet", name_fr: "Alphabet", icon: "🔤", color: "#6C5CE7", age_group: "3-5", sort_order: 1, is_active: true },

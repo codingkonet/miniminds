@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "MiniMINDS"
+rootProject.name = "TooKKIDS"
 include(":app")
