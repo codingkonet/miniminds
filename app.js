@@ -32,7 +32,7 @@ async function upsertSetting(key, value){
   const {error:e2} = await sb.from("app_settings").insert({id: nextId, key, value});
   if(e2) throw e2;
 }
-async function persistVideos(arr){ state.settings.videos=arr; LS.set("mm_settings",state.settings); if(sb){ try{ await upsertSetting("videos", JSON.stringify(arr)); }catch(e){ toast("Saved locally. Supabase app_settings: "+e.message); } } }
+async function persistVideos(arr){ state.settings.videos=arr; LS.set("mm_settings",state.settings); if(sb){ try{ await upsertSetting("videos", JSON.stringify(arr)); }catch(e){ toast("Saved locally: "+e.message); } } }
 function adSlot(place){
   const ads = monetization().ads;
   if(!ads.enabled || isPremium()) return "";
@@ -82,7 +82,7 @@ window.addKid=async()=>{
   let kid=null;
   if(sb && uid){
     const {data,error}=await sb.from("kid_profiles").insert({parent_id:uid,name,age_group:age,avatar}).select().single();
-    if(error){ toast("Supabase: "+error.message); return; }
+    if(error){ toast("Sync: "+error.message); return; }
     kid=data;
   }else{
     kid={id:"k"+Date.now()+Math.floor(Math.random()*999), parent_id:uid, name, age_group:age, avatar, created_at:new Date().toISOString()};
@@ -98,7 +98,7 @@ window.updateKid=async()=>{
   const av=document.querySelector("input[name=kid_av]:checked"); const avatar=av?av.value:k.avatar;
   if(!name){ toast(state.lang==="fr"?"Donne un nom à l'enfant.":"Give the child a name."); return; }
   k.name=name; k.age_group=age; k.avatar=avatar;
-  if(sb && isRemoteKid(k)){ try{ const {error}=await sb.from("kid_profiles").update({name,age_group:age,avatar}).eq("id",k.id); if(error) throw error; }catch(e){ toast("Supabase: "+e.message); } }
+  if(sb && isRemoteKid(k)){ try{ const {error}=await sb.from("kid_profiles").update({name,age_group:age,avatar}).eq("id",k.id); if(error) throw error; }catch(e){ toast("Sync: "+e.message); } }
   state.editKidId=null; LS.set("mm_kids",state.kids); render(); toast(s.kidUpdated+" ✅");
 };
 window.deleteKid=async(id)=>{
@@ -151,7 +151,7 @@ async function loadData(){
         sb.from("categories").select("*").order("sort_order"), sb.from("vocabulary").select("*").order("sort_order"),
         sb.from("stories").select("*"), sb.from("songs").select("*"), sb.from("badges").select("*")]);
       if(cats.data && cats.data.length){ state.data={categories:cats.data, vocabulary:vocab.data||[], stories:stories.data||[], songs:songs.data||[], badges:badges.data||window.MM_SEED.badges}; return; }
-      toast("Supabase connected - no content yet, showing demo content. Import supabase/schema.sql");
+      toast(state.lang==="fr"?"Aucun contenu pour l'instant - affichage du contenu de démonstration.":"No content yet - showing demo content.");
     }catch(e){ console.warn("Supabase load failed, using demo data", e); }
   }
   source = sb ? "supabase-empty" : "demo";
@@ -178,9 +178,12 @@ function copyrightFooter(){
   const year = new Date().getFullYear();
   return `<footer class="site-footer"><div class="wrap" style="padding-bottom:20px"><strong>MiniMINDS</strong> - ${t().tagline}<br>
   <a href="#/app">${t().learn}</a> • <a href="#/stories">${t().stories}</a> • <a href="#/songs">${t().songs}</a> • <a href="#/videos">${t().videos}</a> • <a href="#/parent">${t().parents}</a><br>
-  <small>© ${year} MiniMINDS. ${state.lang==="fr"?"Tous droits réservés.":"All rights reserved."} • ${state.lang==="fr"?"Sans publicité • Sûr pour les enfants":"No ads • Safe for kids"}<br>
-  <a href="#/admin" style="font-size:12px;color:#bbb;text-decoration:none">Admin</a></small></div></footer>`;
+  <small><span onclick="footSecret()" style="cursor:default">© ${year} MiniMINDS.</span> ${state.lang==="fr"?"Tous droits réservés.":"All rights reserved."} • ${state.lang==="fr"?"Sans publicité • Sûr pour les enfants":"No ads • Safe for kids"}</small></div></footer>`;
 }
+// Hidden admin access (no public link): triple-click the © line in the footer,
+// or open the #/admin URL directly.
+let footSecretCount=0, footSecretTimer=null;
+window.footSecret=()=>{ footSecretCount++; clearTimeout(footSecretTimer); footSecretTimer=setTimeout(()=>{footSecretCount=0;},1500); if(footSecretCount>=3){ footSecretCount=0; location.hash="#/admin"; } };
 
 function authView(isSignup, notice){
   const fr=state.lang==="fr";
@@ -194,7 +197,7 @@ function authView(isSignup, notice){
   <label>${fr?"Mot de passe":"Password"}</label><input id="auth_pass" type="password" autocomplete="${isSignup?"new-password":"current-password"}" placeholder="••••••••">
   <button class="btn primary" onclick="${isSignup?"doSignup()":"doLogin()"}">${isSignup?(fr?"S'inscrire":"Sign Up"):(fr?"Se connecter":"Login")}</button>
   <p>${isSignup?`${fr?"Déjà un compte ?":"Already have an account?"} <a href="#/login"><b>${fr?"Se connecter":"Login"}</b></a>`:`${fr?"Pas encore de compte ?":"No account yet?"} <a href="#/signup"><b>${fr?"S'inscrire gratuitement":"Sign up free"}</b></a>`}</p>
-  <p><small>${sb?(fr?"Compte sécurisé via Supabase Auth.":"Secure account via Supabase Auth."):(fr?"Mode démo: compte stocké sur cet appareil.":"Demo Mode: account stored on this device.")}</small></p></div></main>`+copyrightFooter();
+  <p><small>${sb?(fr?"Compte sécurisé.":"Secure account."):(fr?"Mode démo: compte stocké sur cet appareil.":"Demo Mode: account stored on this device.")}</small></p></div></main>`+copyrightFooter();
 }
 function afterAuthRedirect(){
   const target = LS.get("mm_redirect", "#/app"); localStorage.removeItem("mm_redirect");
@@ -514,7 +517,7 @@ function parentView(){
         </p></div>`;
     }).join("")}</div>`:`<div class="notice" style="max-width:760px;margin:10px auto">👋 ${s.noKids}</div>`;
   return header()+`<main class="wrap"><a class="btn" href="#/app">⬅ ${t().back}</a><h1>👨‍👩‍👧 ${fr?"Tableau de bord parents":"Parent Dashboard"}</h1>
-  ${!sb?`<div class="notice">🟡 ${fr?"Mode démo : les enfants sont gardés sur cet appareil. Connectez Supabase pour les synchroniser.":"Demo mode: kids are kept on this device. Connect Supabase to sync them."}</div>`:(state.user?`<div class="notice">🟢 ${fr?"Profils enfants synchronisés avec votre compte.":"Kid profiles synced with your account."}</div>`:`<div class="notice">🔑 ${fr?"Connectez-vous pour synchroniser les profils enfants avec votre compte.":"Log in to sync kid profiles with your account."}</div>`)}
+  ${!sb?`<div class="notice">🟡 ${fr?"Mode démo : les enfants sont gardés sur cet appareil. Connectez un compte pour les synchroniser.":"Demo mode: kids are kept on this device. Connect an account to sync them."}</div>`:(state.user?`<div class="notice">🟢 ${fr?"Profils enfants synchronisés avec votre compte.":"Kid profiles synced with your account."}</div>`:`<div class="notice">🔑 ${fr?"Connectez-vous pour synchroniser les profils enfants avec votre compte.":"Log in to sync kid profiles with your account."}</div>`)}
   <h2>🧒 ${s.myKids} (${state.kids.length})</h2>${kidsHtml}
   ${state.editKidId?kidForm(state.kids.find(k=>String(k.id)===String(state.editKidId))):kidForm(null)}
   <h2>📊 ${fr?"Statistiques":"Statistics"} — ${activeKidObj()?activeKidObj().avatar+" "+activeKidObj().name:"🦉 "+s.guest}</h2>
@@ -528,7 +531,7 @@ window.checkPin=()=>{ if($("#pin").value===String(state.settings.parentPin)){ses
 const ADMIN_DEMO={email:"admin@miniminds.school",password:"demo1234"}; // Offline Demo Mode only. Supabase Mode uses your real Supabase Auth user - never commit real passwords.
 function adminLoginView(err=""){
   return `<main class="wrap"><div class="form-card" style="margin:40px auto"><div style="font-size:52px">🦉</div><h1>MiniMINDS Admin</h1>
-  ${source==="demo"?`<div class="notice">Demo Mode - use:<br><b>${ADMIN_DEMO.email}</b> / <b>${ADMIN_DEMO.password}</b><br><small>Add Supabase keys in supabase-config.js to use real Supabase Auth.</small></div>`:`<div class="notice">Supabase Mode: sign in with a Supabase user whose profiles.role = 'admin'.</div>`}
+  ${source==="demo"?`<div class="notice">Demo Mode - use:<br><b>${ADMIN_DEMO.email}</b> / <b>${ADMIN_DEMO.password}</b><br><small>Configure the backend to use real accounts.</small></div>`:`<div class="notice">Sign in with an administrator account.</div>`}
   ${err?`<p style="color:red;font-weight:800">${err}</p>`:""}
   <label>Email</label><input id="aemail" type="email" value="${source==='demo'?ADMIN_DEMO.email:''}"><label>Password</label><input id="apass" type="password" value="${source==='demo'?ADMIN_DEMO.password:''}">
   <button class="btn primary" onclick="doAdminLogin()">Login</button> <a class="btn" href="#/app">Kids Site</a></div></main>`;
@@ -536,7 +539,7 @@ function adminLoginView(err=""){
 window.doAdminLogin=async()=>{ const email=$("#aemail").value.trim(), pass=$("#apass").value;
   if(sb){ const {data,error}=await sb.auth.signInWithPassword({email,password:pass}); if(error){ $("#app").innerHTML=adminLoginView(error.message); return; }
     const {data:prof}=await sb.from("profiles").select("*").eq("id",data.user.id).single();
-    if(!prof||prof.role!=="admin"){ await sb.auth.signOut(); $("#app").innerHTML=adminLoginView("This account is not an admin. In Supabase run: update profiles set role='admin' where email='"+email+"'"); return; }
+    if(!prof||prof.role!=="admin"){ await sb.auth.signOut(); $("#app").innerHTML=adminLoginView("This account is not an admin."); return; }
     state.admin={email}; } else { if(email!==ADMIN_DEMO.email||pass!==ADMIN_DEMO.password){ $("#app").innerHTML=adminLoginView("Wrong demo credentials"); return; } state.admin={email}; }
   LS.set("mm_admin",state.admin); location.hash="#/admin"; render(); };
 window.adminLogout=async()=>{ if(sb) await sb.auth.signOut(); state.admin=null; LS.set("mm_admin",null); location.hash="#/"; render(); };
@@ -860,7 +863,7 @@ async function saveMonetizationToSupabase(){
   if(!sb) return true;
   try{
     await upsertSetting("monetization", JSON.stringify(monetization())); return true;
-  }catch(e){ toast("Saved locally. Supabase app_settings: "+e.message); return false; }
+  }catch(e){ toast("Saved locally: "+e.message); return false; }
 }
 (async()=>{ await initSupabase();
   if(sb){ try{ const {data}=await sb.auth.getSession(); if(data && data.session && data.session.user){ state.user={id:data.session.user.id,email:data.session.user.email}; LS.set("mm_session",state.user); await checkPremiumSubscription(); } sb.auth.onAuthStateChange((event,session)=>{ state.user=session&&session.user?{id:session.user.id,email:session.user.email}:null; LS.set("mm_session",state.user); loadKids().then(()=>render()); }); }catch(e){} }

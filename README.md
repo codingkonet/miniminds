@@ -14,7 +14,7 @@ Open http://127.0.0.1:5174
 - Landing page (public home with copyright footer): http://127.0.0.1:5174/
 - Kids app: http://127.0.0.1:5174/#/app (the Android app opens here directly)
 - Parent dashboard: `#/parent` - PIN `1234`
-- Admin panel (hidden - no button in the kids header, only a small "Admin" link in the homepage footer): direct link http://127.0.0.1:5174/#/admin - `admin@miniminds.school` / `demo1234` (offline Demo Mode only). Bookmark this link. For Supabase Mode, sign in with your Supabase Auth admin user (password is never stored in code) and set its `profiles.role` to `admin`.
+- Admin panel (hidden - **no visible link anywhere**: no button in the kids header and nothing in the footer). Access it by typing the direct link `#/admin` (e.g. http://127.0.0.1:5174/#/admin) or by **triple-clicking the © line in the footer** (hidden gesture, works within 1.5s): `admin@miniminds.school` / `demo1234` (offline Demo Mode only). Bookmark the link. For Supabase Mode, sign in with your Supabase Auth admin user (password is never stored in code) and set its `profiles.role` to `admin`. No Supabase/backend info is shown anywhere on public pages (login, signup, parent dashboard, toasts are all neutral).
 
 ## Connect Supabase (real backend)
 
