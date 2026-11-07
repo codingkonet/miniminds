@@ -72,3 +72,9 @@ label{font-weight:800;font-size:13px}.form-card{background:#fff;border-radius:18
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px;font-weight:800;z-index:50}
 .celebrate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:40}.celebrate>div{background:#fff;border:5px solid var(--ink);border-radius:28px;padding:34px;text-align:center;max-width:420px}
 @media(max-width:760px){.admin-layout{grid-template-columns:1fr}.sidebar{display:flex;flex-wrap:wrap;gap:4px}.options{grid-template-columns:1fr}}
+/* PWA install banner */
+.pwa-install{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:10px 12px 16px;transform:translateY(130%);transition:transform .35s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.pwa-install.pwa-install-show{transform:translateY(0)}
+.pwa-install-card{pointer-events:auto;max-width:560px;margin:0 auto;background:#fff;border:3px solid var(--ink,#2D3436);border-radius:20px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 34px rgba(0,0,0,.22)}
+.pwa-install .btn{white-space:nowrap}
+.pwa-x{background:none;border:0;font-size:16px;cursor:pointer;color:#98A2B3;padding:6px 4px;flex:0 0 auto}

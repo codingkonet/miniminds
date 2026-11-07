@@ -286,7 +286,8 @@ function landingView(){
   <div class="controls"><button class="pill" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">${fr?"Fonctionnalités":"Features"}</button><button class="pill" onclick="document.getElementById('categories').scrollIntoView({behavior:'smooth'})">${fr?"Catégories":"Categories"}</button><a class="pill" href="#/parent">${t().parents}</a>
   <button class="pill ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button><button class="pill ${state.lang==='fr'?'active':''}" onclick="setLang('fr')">FR</button>
   ${hasPaidPlan()?`<a class="pill" href="#/pricing">⭐ ${fr?"Tarifs":"Pricing"}</a>`:""}
-  <a class="btn teal" href="TooKKIDS.apk" download="TooKKIDS.apk">⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
+  <button id="pwa-pill" class="pill" style="display:none" onclick="doInstallPWA()">📲 ${fr?"Installer":"Install"}</button>
+  <a class="btn teal" href="TooKKIDS.apk" download="TooKKIDS.apk">>⬇ ${fr?"Télécharger l'APK":"Download APK"}</a>
   ${authButtons()}
   <a class="btn primary" href="#/app">${fr?"Commencer":"Start Learning"}</a></div></header>
   <main>
@@ -848,8 +849,76 @@ function render(){
   else html=landingView();
   $("#app").innerHTML=html; window.scrollTo(0,0);
   if(parts[0]==="admin"&&parts[1]==="users"&&state.admin) window.loadAdminUsers();
+  updateInstallUi();
 }
 window.addEventListener("hashchange",render);
+
+/* ============ PWA install: automatic browser install prompt ============ */
+let pwaDeferred = null;
+function pwaStandalone(){ return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
+function pwaIsIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+function pwaCanShow(){
+  if(pwaStandalone()) return false;
+  if(LS.get("mm_pwa_installed",0)) return false;
+  const d = Number(LS.get("mm_pwa_dismissed",0));
+  return !(d && Date.now()-d < 30*24*60*60*1000);
+}
+function updateInstallUi(){
+  const pill = document.getElementById("pwa-pill");
+  if(pill) pill.style.display = (pwaCanShow() && (pwaDeferred || pwaIsIOS())) ? "" : "none";
+}
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault(); // suppress the browser mini-infobar, we show our own banner
+  pwaDeferred = e;
+  updateInstallUi();
+  if(pwaCanShow()) setTimeout(() => { if(pwaCanShow() && !document.getElementById("pwa-install")) showInstallBanner(); }, 1200);
+});
+window.addEventListener("appinstalled", () => {
+  pwaDeferred = null; LS.set("mm_pwa_installed",1);
+  const b = document.getElementById("pwa-install"); if(b) b.remove();
+  updateInstallUi();
+});
+function showInstallBanner(){
+  if(document.getElementById("pwa-install") || !pwaCanShow()) return;
+  const fr = state.lang === "fr";
+  const ios = pwaIsIOS() && !pwaDeferred; // iOS never fires the event → instructions mode
+  const el = document.createElement("div");
+  el.id = "pwa-install"; el.className = "pwa-install";
+  el.innerHTML = `<div class="pwa-install-card"><span style="font-size:30px">📲</span>
+    <div style="flex:1;min-width:0"><b style="display:block;font-size:15px">${fr?"Installer TooKKIDS":"Install TooKKIDS"}</b>
+    <small style="color:#5b6472;font-size:12.5px;line-height:1.35">${ios ? (fr?"iOS : touchez Partager puis « Sur l'écran d'accueil »":"iOS: tap Share, then \"Add to Home Screen\"") : (fr?"Une seule tapette : TooKKIDS sur votre écran d'accueil.":"One tap and TooKKIDS lives on your home screen.")}</small></div>
+    ${ios ? "" : `<button class="btn primary" style="padding:10px 18px;margin:0" onclick="doInstallPWA()">${fr?"Installer":"Install"}</button>`}
+    <button class="pwa-x" onclick="closeInstallBanner()" aria-label="Close">✕</button></div>`;
+  document.body.appendChild(el);
+  void el.offsetWidth; // force reflow so the slide-up transition runs (works even if rAF is throttled)
+  el.classList.add("pwa-install-show");
+}
+function closeInstallBanner(){
+  LS.set("mm_pwa_dismissed", Date.now());
+  const b = document.getElementById("pwa-install");
+  if(b){ b.classList.remove("pwa-install-show"); setTimeout(() => b.remove(), 320); }
+  updateInstallUi();
+}
+async function doInstallPWA(){
+  if(!pwaDeferred){
+    const fr = state.lang === "fr";
+    alert(pwaIsIOS()
+      ? (fr ? "iOS : touchez Partager ⬆ puis « Sur l'écran d'accueil »." : "iOS: tap the Share button ⬆, then \"Add to Home Screen\".")
+      : (fr ? "Ouvrez le menu du navigateur → Installer l'application." : "Open your browser menu → Install app."));
+    return;
+  }
+  const ev = pwaDeferred; pwaDeferred = null;
+  let res = null;
+  try{ ev.prompt(); res = await ev.userChoice; }catch(e){}
+  if(res && res.outcome === "accepted") LS.set("mm_pwa_installed",1);
+  else LS.set("mm_pwa_dismissed", Date.now());
+  const b = document.getElementById("pwa-install"); if(b) b.remove();
+  updateInstallUi();
+}
+// iOS Safari never fires beforeinstallprompt → auto-offer the how-to banner shortly after landing
+setTimeout(() => {
+  if(pwaIsIOS() && pwaCanShow() && !(location.hash || "#/").startsWith("#/admin")) showInstallBanner();
+}, 3500);
 async function loadRemoteSettings(){
   if(!sb) return;
   try{
