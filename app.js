@@ -349,10 +349,10 @@ function categoryView(id){
     ${w.letter?`<div style="font-size:52px;font-weight:900;color:${cat.color}">${w.letter}</div>`:""}
     <h2>${w.word_en}</h2><button class="speak" onclick="speak('${w.word_en.replace(/'/g,"\\'")}','en')">🔊 English</button>
     <h3>${w.word_fr}</h3><button class="speak" onclick="speak('${w.word_fr.replace(/'/g,"\\'")}','fr')">🔊 Français</button>
-    <div id="mic-box" style="margin-top:10px">
+    ${isAndroidApp()?"":`<div id="mic-box" style="margin-top:10px">
       <button class="btn" id="mic-btn" onclick="pronounceWord(this,'${id}','${(w.word_en||"").replace(/'/g,"\\'")}','${(w.word_fr||"").replace(/'/g,"\\'")}')">🎤 ${s.sayIt}</button>
       <div id="mic-msg" style="font-weight:800;min-height:22px;margin-top:6px"></div>
-    </div>
+    </div>`}
     <div style="margin-top:16px"><button class="btn primary" onclick="nextFlash(${words.length})">${s.next} ➜</button></div>
     <small>${(state.flashIdx%words.length)+1} / ${words.length}</small></div>`:`<div class="notice">No words yet. Add them in Admin.</div>`;
   } else if(state.tab==="quiz"){ body=quizView(cat,words); }
@@ -381,7 +381,16 @@ function levSim(a,b){
     d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
   return 1 - d[m][n]/Math.max(m,n);
 }
+// Android app = WebView with the AndroidTTS bridge injected (online mode AND bundled
+// file:// fallback), or any Android WebView UA ("; wv"). Pronunciation (Web Speech API)
+// does not work there, so the "Say it" button is web-only.
+function isAndroidApp(){
+  try{ if(typeof window.AndroidTTS!=="undefined") return true; }catch(e){}
+  // Android WebView UA carries "; wv" in the platform segment: "(Linux; Android 13; wv)"
+  return /;\s*wv\b/.test(navigator.userAgent||"");
+}
 window.pronounceWord=(btn,catId,en,fr)=>{
+  if(isAndroidApp()) return; // web-only feature
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   const msg=document.getElementById("mic-msg");
   const target=state.lang==="en"?en:fr;
