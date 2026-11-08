@@ -78,3 +78,16 @@ label{font-weight:800;font-size:13px}.form-card{background:#fff;border-radius:18
 .pwa-install-card{pointer-events:auto;max-width:560px;margin:0 auto;background:#fff;border:3px solid var(--ink,#2D3436);border-radius:20px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 34px rgba(0,0,0,.22)}
 .pwa-install .btn{white-space:nowrap}
 .pwa-x{background:none;border:0;font-size:16px;cursor:pointer;color:#98A2B3;padding:6px 4px;flex:0 0 auto}
+/* Mobile bottom navigation (app-style tab bar) */
+.mobile-nav{position:fixed;left:0;right:0;bottom:0;z-index:38;display:flex;background:#fff;border-top:3px solid #EFEAFF;box-shadow:0 -6px 22px rgba(45,52,54,.10);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));transform:translateY(115%);transition:transform .3s ease;visibility:hidden}
+.mobile-nav.mobile-nav-show{transform:translateY(0);visibility:visible}
+.mobile-nav-item{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;color:#7A8299;text-decoration:none;border-radius:12px;-webkit-tap-highlight-color:transparent}
+.mobile-nav-item svg{width:24px;height:24px;display:block}
+.mobile-nav-item small{font-size:10.5px;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mobile-nav-item.active{color:#6C5CE7}
+.mobile-nav-item.active small{font-weight:800}
+@media(min-width:761px){.mobile-nav{display:none!important}}
+@media(max-width:760px){
+  body.has-mobile-nav #app{padding-bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+  body.has-mobile-nav .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+}

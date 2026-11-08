@@ -850,6 +850,7 @@ function render(){
   $("#app").innerHTML=html; window.scrollTo(0,0);
   if(parts[0]==="admin"&&parts[1]==="users"&&state.admin) window.loadAdminUsers();
   updateInstallUi();
+  updateMobileNav();
 }
 window.addEventListener("hashchange",render);
 
@@ -919,6 +920,46 @@ async function doInstallPWA(){
 setTimeout(() => {
   if(pwaIsIOS() && pwaCanShow() && !(location.hash || "#/").startsWith("#/admin")) showInstallBanner();
 }, 3500);
+
+/* ============ Mobile bottom navigation (app-style tab bar) ============ */
+const MOBILE_NAV_ITEMS = [
+  {key:"app",     hash:"#/app",     label:{en:"Home",    fr:"Accueil"},
+   svg:'<path d="M3 10.8 12 3l9 7.8V20a1.5 1.5 0 0 1-1.5 1.5H15V15H9v6.5H4.5A1.5 1.5 0 0 1 3 20z"/>'},
+  {key:"stories", hash:"#/stories", label:{en:"Stories", fr:"Histoires"},
+   svg:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v17H6.5A2.5 2.5 0 0 0 4 22.5z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v17h5.5a2.5 2.5 0 0 1 2.5 2.5z"/>'},
+  {key:"songs",   hash:"#/songs",   label:{en:"Songs",   fr:"Chansons"},
+   svg:'<path d="M9 18.5V5.2l11-2.2v13.3"/><ellipse cx="6.3" cy="18.5" rx="2.7" ry="2.5"/><ellipse cx="17.3" cy="16.3" rx="2.7" ry="2.5"/>'},
+  {key:"videos",  hash:"#/videos",  label:{en:"Videos",  fr:"Vidéos"},
+   svg:'<circle cx="12" cy="12" r="9"/><path d="M10 8.2l6.2 3.8-6.2 3.8z"/>'},
+  {key:"rewards", hash:"#/rewards", label:{en:"Rewards", fr:"Récompenses"},
+   svg:'<path d="M7.5 4h9v5.5a4.5 4.5 0 0 1-9 0z"/><path d="M7.5 6H5a2.5 2.5 0 0 0 3 4.6"/><path d="M16.5 6H19a2.5 2.5 0 0 1-3 4.6"/><path d="M12 14v3.5"/><path d="M8.5 21.5h7"/><path d="M10 17.5h4v4h-4z"/>'}
+];
+function mobileNavSegment(){ return (location.hash || "#/").replace(/^#\/?/,"").split("/")[0]; }
+function mobileNavVisible(){
+  return ["app","category","quiz","stories","songs","videos","rewards","kid"].includes(mobileNavSegment());
+}
+function updateMobileNav(){
+  const el = document.getElementById("mobile-nav"); if(!el) return;
+  const visible = mobileNavVisible();
+  document.body.classList.toggle("has-mobile-nav", visible);
+  if(!visible){ el.classList.remove("mobile-nav-show"); el.innerHTML = ""; return; }
+  const seg = mobileNavSegment();
+  const active = ["category","quiz","kid"].includes(seg) ? "app" : seg;
+  const fr = state.lang === "fr";
+  el.innerHTML = MOBILE_NAV_ITEMS.map(it => `
+    <a class="mobile-nav-item ${active === it.key ? "active" : ""}" href="${it.hash}"${active === it.key ? ' aria-current="page"' : ""}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${it.svg}</svg>
+      <small>${it.label[fr ? "fr" : "en"]}</small>
+    </a>`).join("");
+  el.classList.add("mobile-nav-show");
+}
+(function(){ // persistent bar outside #app so route re-renders keep it
+  const n = document.createElement("nav");
+  n.id = "mobile-nav"; n.className = "mobile-nav";
+  n.setAttribute("aria-label", "Main navigation");
+  document.body.appendChild(n);
+  updateMobileNav();
+})();
 async function loadRemoteSettings(){
   if(!sb) return;
   try{
